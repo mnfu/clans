@@ -1,7 +1,6 @@
 package mnfu.clantag;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.server.command.CommandManager;
@@ -9,7 +8,6 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
-import net.minecraft.util.Formatting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,8 +25,7 @@ public class ClanTag implements ModInitializer {
         LOGGER.info("Initializing Clans");
 
         File file = new File("config/clans/clans.json");
-        file.getParentFile().mkdirs();
-        ClanManager clanManager = new ClanManager(file);
+        ClanManager clanManager = new ClanManager(file, LOGGER);
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 
@@ -37,7 +34,7 @@ public class ClanTag implements ModInitializer {
             var reloadCommand = CommandManager.literal("reload")
                     .executes(context -> {
                         clanManager.load();
-                        context.getSource().sendFeedback(()->Text.literal(FEEDBACK_PREFIX + "clans.yml reloaded!"), true);
+                        context.getSource().sendFeedback(()->Text.literal(FEEDBACK_PREFIX + "clans.json reloaded!"), true);
                         return 1;
                     });
 
@@ -46,6 +43,10 @@ public class ClanTag implements ModInitializer {
                         ServerPlayerEntity executor = context.getSource().getPlayer();
                         String executorUUIDString = executor.getUuidAsString();
                         Clan clan = clanManager.getPlayerClan(executorUUIDString);
+                        if (clan == null) {
+                            executor.sendMessage(Text.literal("Clan not found!"), false);
+                            return 0;
+                        }
 
                         StringBuilder membersList = new StringBuilder();
                         for (String id : clan.members()) {
@@ -107,7 +108,14 @@ public class ClanTag implements ModInitializer {
                                 for (String id : clan.members()) {
                                     ServerPlayerEntity member = context.getSource().getServer()
                                             .getPlayerManager().getPlayer(UUID.fromString(id));
-                                    String name = member != null ? member.getName().getString() : "Offline Player";
+                                    String name = "Unknown Player";
+                                    if (member != null) {
+                                        name = member.getName().getString();
+                                    } else {
+                                        try {
+                                            name = MojangApi.getUsernameFromUuid(id);
+                                        } catch (Exception ignored) {}
+                                    }
                                     membersList.append(name).append(", ");
                                 }
 
@@ -115,7 +123,14 @@ public class ClanTag implements ModInitializer {
 
                                 ServerPlayerEntity leader = context.getSource().getServer()
                                         .getPlayerManager().getPlayer(UUID.fromString(clan.leader()));
-                                String leaderName = leader != null ? leader.getName().getString() : "Offline Player";
+                                String leaderName = "Unknown Player";
+                                if (leader != null) {
+                                    leaderName = leader.getName().getString();
+                                } else {
+                                    try {
+                                        leaderName = MojangApi.getUsernameFromUuid(clan.leader());
+                                    } catch (Exception ignored) {}
+                                }
                                 executor.sendMessage(Text.literal("Leader: " + leaderName), false);
 
                                 executor.sendMessage(Text.literal("Members: " +
