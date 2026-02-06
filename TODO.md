@@ -12,14 +12,16 @@
 ### If a command is currently in-game and not listed here, it is a WIP or development command.
 
 - **Player Commands** - no restriction
-- [ ] /c create \<clanName> \<hexColor> - create a new clan. If hexcolor is left blank, set to #FFFFFF
-- [ ] /c leave - leave a clan. If executor is not in a clan, do nothing. If in a clan as a member, leave. If a leader, do nothing.
+- [ ] /clan create \<clanName> \<hexColor> - create a new clan. If hexcolor is left blank, set to #FFFFFF
+- [x] /clan leave - leave a clan. If executor is not in a clan, do nothing. If in a clan as a member, leave. If a leader, do nothing.
 
 - **Clan Leader Commands** - restricted to clan leaders
-- [ ] /c invite \<playerName> - send an invite to another online player to join a clan
-- [ ] /c color \<hexColor> - change the hexcolor of a clan if the executor is the leader of one
-- [ ] /c kick \<playerName> - kicks a player from the clan (assuming the executor is the leader of one)
-- [ ] /c disband - delete a clan entry if the executor is the leader of one.
-- [ ] /c transfer - transfer leadership of a clan to an existing member of the clan. Possibly send a confirmation, but not required.
+- [ ] /clan invite \<playerName> - send an invite to another online player to join a clan
+- [ ] /clan color \<hexColor> - change the hexcolor of a clan if the executor is the leader of one
+- [x] /clan kick \<playerName> - kicks a player from the clan (assuming the executor is the leader of one)
+- [ ] /clan disband - delete a clan entry if the executor is the leader of one.
+- [ ] /clan transfer - transfer leadership of a clan to an existing member of the clan. Possibly send a confirmation, but not required.
+- [ ] /clan info - prints info about the clan
+  - TODO reduce api calls to mojang by keeping responses we asked for recently
 - **Operator Commands** - restricted to server operators
-- [x] /c reload - reload the clans.yml for reloading manual changes live
+- [x] /clan reload - reload the clans.yml for reloading manual changes live
