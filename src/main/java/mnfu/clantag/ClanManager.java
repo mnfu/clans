@@ -4,16 +4,27 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 public class ClanManager {
     private final File file;
     private final Gson gson;
     private final Map<String, Clan> clans = new HashMap<>(); // key: clan name
+    private final Logger logger;
 
-    public ClanManager(File file) {
+    public ClanManager(File file, Logger logger) {
+        this.logger = logger;
         this.file = file;
         this.gson = new GsonBuilder().setPrettyPrinting().create();
         load();
@@ -79,11 +90,14 @@ public class ClanManager {
         save();
     }
 
+    @Nullable
     public Clan getClan(String clanName) {
         clanName = forceFirstCharUppercase(clanName);
-        return clans.get(clanName);
+        if (clans.containsKey(clanName)) return clans.get(clanName);
+        return null;
     }
 
+    @Nullable
     public Clan getPlayerClan(String playerUUID) {
         for (Clan clan : clans.values()) {
             if (clan.members().contains(playerUUID)) return clan;
@@ -96,7 +110,7 @@ public class ClanManager {
     }
 
     public void load() {
-        if (!file.exists()) return;
+        if (!file.exists()) return; // save() handles creating the files & directories. return early if it doesn't exist.
         try (Reader reader = new FileReader(file)) {
             Type type = new TypeToken<Map<String, Clan>>(){}.getType();
             Map<String, Clan> loaded = gson.fromJson(reader, type);
@@ -111,16 +125,37 @@ public class ClanManager {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Failed to load clans", e);
         }
     }
 
-    // Save clans to JSON
     public void save() {
-        try (Writer writer = new FileWriter(file)) {
-            gson.toJson(clans, writer);
+        Path temp = null;
+        try {
+            Path target = file.toPath();
+            Path parent = target.getParent() != null ? target.getParent() : Paths.get(".");
+            Files.createDirectories(parent);
+            temp = Files.createTempFile(parent, "clans", ".tmp");
+
+            try (FileOutputStream fos = new FileOutputStream(temp.toFile())) {
+                FileChannel channel = fos.getChannel();
+                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fos, StandardCharsets.UTF_8))) {
+                    gson.toJson(clans, writer);
+                    writer.flush();
+                }
+                if (channel.isOpen()) {
+                    channel.force(true);
+                }
+            }
+            // atomic move
+            Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Failed to save clans atomically", e);
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException ignored) {}
+            }
         }
     }
 
