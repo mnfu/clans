@@ -27,10 +27,8 @@ public class ClanManager {
         }
         List<String> members = new ArrayList<>();
         members.add(leader);
-        hexColor = hexColor.trim();
-        if (!hexColor.startsWith("#")) {
-            hexColor = "#" + hexColor;
-        }
+        hexColor = "#" + hexColor;
+
         Clan clan = new Clan(clanName, leader, members, hexColor);
         clans.put(clanName, clan);
         save();
