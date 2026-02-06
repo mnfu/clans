@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "clantag",
+  "version": "${version}",
+  "name": "ClanTag",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/clantag/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "fabric-datagen": [
+      "mnfu.clantag.client.ClantagDataGenerator"
+    ],
+    "main": [
+      "mnfu.clantag.ClanTag"
+    ]
+  },
+  "mixins": [
+    "clantag.mixins.json",
+    {
+      "config": "clantag.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
