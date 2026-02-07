@@ -50,35 +50,33 @@ public class ClanTag implements ModInitializer {
 
                         StringBuilder membersList = new StringBuilder();
                         for (String id : clan.members()) {
+                            UUID uuid = UUID.fromString(id);
                             ServerPlayerEntity member = context.getSource().getServer()
-                                    .getPlayerManager().getPlayer(UUID.fromString(id));
-                            String name = "Unknown Player";
+                                    .getPlayerManager().getPlayer(uuid);
+                            String name;
                             if (member != null) {
                                 name = member.getName().getString();
                             } else {
-                                try {
-                                    name = MojangApi.getUsernameFromUuid(id);
-                                } catch (Exception ignored) {}
+                                name = MojangApi.getUsername(uuid).orElse("Unknown Player");
                             }
                             membersList.append(name).append(", ");
                         }
 
                         executor.sendMessage(Text.literal(clan.name()).setStyle(Style.EMPTY.withColor(TextColor.parse(clan.hexColor()).getOrThrow())));
 
+                        UUID leaderUUID = UUID.fromString(clan.leader());
                         ServerPlayerEntity leader = context.getSource().getServer()
-                                .getPlayerManager().getPlayer(UUID.fromString(clan.leader()));
-                        String leaderName = "Unknown Player";
+                                .getPlayerManager().getPlayer(leaderUUID);
+                        String leaderName;
                         if (leader != null) {
                             leaderName = leader.getName().getString();
                         } else {
-                            try {
-                                leaderName = MojangApi.getUsernameFromUuid(clan.leader());
-                            } catch (Exception ignored) {}
+                            leaderName = MojangApi.getUsername(leaderUUID).orElse("Unknown Player");
                         }
                         executor.sendMessage(Text.literal("Leader: " + leaderName), false);
 
                         executor.sendMessage(Text.literal("Members: " +
-                                (membersList.length() > 0 ? membersList.substring(0, membersList.length() - 2) : "None")), false);
+                                (!membersList.isEmpty() ? membersList.substring(0, membersList.length() - 2) : "None")), false);
                         executor.sendMessage(Text.literal("Color: " + clan.hexColor()), false);
 
 
@@ -106,35 +104,33 @@ public class ClanTag implements ModInitializer {
 
                                 StringBuilder membersList = new StringBuilder();
                                 for (String id : clan.members()) {
+                                    UUID uuid = UUID.fromString(id);
                                     ServerPlayerEntity member = context.getSource().getServer()
-                                            .getPlayerManager().getPlayer(UUID.fromString(id));
-                                    String name = "Unknown Player";
+                                            .getPlayerManager().getPlayer(uuid);
+                                    String name;
                                     if (member != null) {
                                         name = member.getName().getString();
                                     } else {
-                                        try {
-                                            name = MojangApi.getUsernameFromUuid(id);
-                                        } catch (Exception ignored) {}
+                                        name = MojangApi.getUsername(uuid).orElse("Unknown Player");
                                     }
                                     membersList.append(name).append(", ");
                                 }
 
                                 executor.sendMessage(Text.literal(clan.name()).setStyle(Style.EMPTY.withColor(TextColor.parse(clan.hexColor()).getOrThrow())));
 
+                                UUID leaderUUID = UUID.fromString(clan.leader());
                                 ServerPlayerEntity leader = context.getSource().getServer()
-                                        .getPlayerManager().getPlayer(UUID.fromString(clan.leader()));
-                                String leaderName = "Unknown Player";
+                                        .getPlayerManager().getPlayer(leaderUUID);
+                                String leaderName;
                                 if (leader != null) {
                                     leaderName = leader.getName().getString();
                                 } else {
-                                    try {
-                                        leaderName = MojangApi.getUsernameFromUuid(clan.leader());
-                                    } catch (Exception ignored) {}
+                                    leaderName = MojangApi.getUsername(leaderUUID).orElse("Unknown Player");
                                 }
                                 executor.sendMessage(Text.literal("Leader: " + leaderName), false);
 
                                 executor.sendMessage(Text.literal("Members: " +
-                                        (membersList.length() > 0 ? membersList.substring(0, membersList.length() - 2) : "None")), false);
+                                        (!membersList.isEmpty() ? membersList.substring(0, membersList.length() - 2) : "None")), false);
                                 executor.sendMessage(Text.literal("Color: " + clan.hexColor()), false);
 
                                 return 1;
