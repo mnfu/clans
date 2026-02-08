@@ -1,13 +1,13 @@
 package mnfu.clantag;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import mnfu.clantag.commands.InfoCommand;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.text.TextColor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,114 +27,34 @@ public class ClanTag implements ModInitializer {
         File file = new File("config/clans/clans.json");
         ClanManager clanManager = new ClanManager(file, LOGGER);
 
+        // cache players when they join, reducing any offline player lookups
+        ServerPlayConnectionEvents.JOIN.register(((serverPlayNetworkHandler, packetSender, minecraftServer) -> {
+            ServerPlayerEntity player = serverPlayNetworkHandler.getPlayer();
+            MojangApi.cachePlayer(player);
+        }));
+
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 
             var baseCommand = CommandManager.literal("clan");
 
             var reloadCommand = CommandManager.literal("reload")
+                    .requires(CommandManager.requirePermissionLevel(CommandManager.OWNERS_CHECK)) // only lvl 4 ops / console
                     .executes(context -> {
                         clanManager.load();
-                        context.getSource().sendFeedback(()->Text.literal(FEEDBACK_PREFIX + "clans.json reloaded!"), true);
+                        context.getSource().sendFeedback(() -> Text.literal(FEEDBACK_PREFIX + "Reloaded clans.json!"), true);
                         return 1;
                     });
 
-            var infoCommand = CommandManager.literal("info")
+            var invalidateCacheCommand = CommandManager.literal("cache")
+                    .requires(CommandManager.requirePermissionLevel(CommandManager.OWNERS_CHECK)) // only lvl 4 ops / console
+                    .then(CommandManager.literal("clear")
                     .executes(context -> {
-                        ServerPlayerEntity executor = context.getSource().getPlayer();
-                        String executorUUIDString = executor.getUuidAsString();
-                        Clan clan = clanManager.getPlayerClan(executorUUIDString);
-                        if (clan == null) {
-                            executor.sendMessage(Text.literal("Clan not found!"), false);
-                            return 0;
-                        }
-
-                        StringBuilder membersList = new StringBuilder();
-                        for (String id : clan.members()) {
-                            UUID uuid = UUID.fromString(id);
-                            ServerPlayerEntity member = context.getSource().getServer()
-                                    .getPlayerManager().getPlayer(uuid);
-                            String name;
-                            if (member != null) {
-                                name = member.getName().getString();
-                            } else {
-                                name = MojangApi.getUsername(uuid).orElse("Unknown Player");
-                            }
-                            membersList.append(name).append(", ");
-                        }
-
-                        executor.sendMessage(Text.literal(clan.name()).setStyle(Style.EMPTY.withColor(TextColor.parse(clan.hexColor()).getOrThrow())));
-
-                        UUID leaderUUID = UUID.fromString(clan.leader());
-                        ServerPlayerEntity leader = context.getSource().getServer()
-                                .getPlayerManager().getPlayer(leaderUUID);
-                        String leaderName;
-                        if (leader != null) {
-                            leaderName = leader.getName().getString();
-                        } else {
-                            leaderName = MojangApi.getUsername(leaderUUID).orElse("Unknown Player");
-                        }
-                        executor.sendMessage(Text.literal("Leader: " + leaderName), false);
-
-                        executor.sendMessage(Text.literal("Members: " +
-                                (!membersList.isEmpty() ? membersList.substring(0, membersList.length() - 2) : "None")), false);
-                        executor.sendMessage(Text.literal("Color: " + clan.hexColor()), false);
-
-
-
+                        MojangApi.clearCache();
+                        context.getSource().sendFeedback(() -> Text.literal(FEEDBACK_PREFIX + "Offline player cache cleared!"), true);
                         return 1;
-                    })
-                    .then(CommandManager.argument("clanName", StringArgumentType.word())
-                            .suggests((commandContext, suggestionsBuilder) -> {
-                                // a collection is just a more general list object than an arraylist
-                                Collection<Clan> clans = clanManager.getAllClans();
-                                for (Clan c : clans) {
-                                    suggestionsBuilder.suggest(c.name());
-                                }
-                                return suggestionsBuilder.buildFuture();
-                            })
-                            .executes(context -> {
-                                ServerPlayerEntity executor = context.getSource().getPlayer();
-                                String clanName = StringArgumentType.getString(context, "clanName");
+                    }));
 
-                                var clan = clanManager.getClan(clanName);
-                                if (clan == null) {
-                                    executor.sendMessage(Text.literal("Clan not found!"), false);
-                                    return 0;
-                                }
-
-                                StringBuilder membersList = new StringBuilder();
-                                for (String id : clan.members()) {
-                                    UUID uuid = UUID.fromString(id);
-                                    ServerPlayerEntity member = context.getSource().getServer()
-                                            .getPlayerManager().getPlayer(uuid);
-                                    String name;
-                                    if (member != null) {
-                                        name = member.getName().getString();
-                                    } else {
-                                        name = MojangApi.getUsername(uuid).orElse("Unknown Player");
-                                    }
-                                    membersList.append(name).append(", ");
-                                }
-
-                                executor.sendMessage(Text.literal(clan.name()).setStyle(Style.EMPTY.withColor(TextColor.parse(clan.hexColor()).getOrThrow())));
-
-                                UUID leaderUUID = UUID.fromString(clan.leader());
-                                ServerPlayerEntity leader = context.getSource().getServer()
-                                        .getPlayerManager().getPlayer(leaderUUID);
-                                String leaderName;
-                                if (leader != null) {
-                                    leaderName = leader.getName().getString();
-                                } else {
-                                    leaderName = MojangApi.getUsername(leaderUUID).orElse("Unknown Player");
-                                }
-                                executor.sendMessage(Text.literal("Leader: " + leaderName), false);
-
-                                executor.sendMessage(Text.literal("Members: " +
-                                        (!membersList.isEmpty() ? membersList.substring(0, membersList.length() - 2) : "None")), false);
-                                executor.sendMessage(Text.literal("Color: " + clan.hexColor()), false);
-
-                                return 1;
-                            }));
+            var infoCommand = new InfoCommand(clanManager).build();
 
             var createClanCommand = CommandManager.literal("create")
                     .then(CommandManager.argument("clanName", StringArgumentType.word())
@@ -235,6 +155,7 @@ public class ClanTag implements ModInitializer {
 
             dispatcher.register(baseCommand
                     .then(reloadCommand)
+                    .then(invalidateCacheCommand)
                     .then(infoCommand)
                     .then(createClanCommand)
                     .then(addMemberCommand)

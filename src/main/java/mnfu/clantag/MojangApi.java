@@ -2,6 +2,7 @@ package mnfu.clantag;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -139,6 +140,14 @@ public final class MojangApi {
         } else {
             return Optional.empty();
         }
+    }
+
+    public static void cachePlayer(ServerPlayerEntity player) {
+        CACHE.put(player.getUuid(), player.getName().getString());
+    }
+
+    public static void clearCache() {
+        CACHE.nuke();
     }
 }
 

@@ -60,4 +60,9 @@ public class MojangCache {
             nameToUuid.put(name, new CacheEntry<>(uuid, uuidTTL));
         }
     }
+
+    public void nuke() {
+        uuidToName.clear();
+        nameToUuid.clear();
+    }
 }
