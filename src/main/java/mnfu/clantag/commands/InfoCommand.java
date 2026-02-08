@@ -93,7 +93,14 @@ public class InfoCommand {
                 .append(formatMembersList(context, clan))
                 .append("\n");
 
-        message.append(Text.literal("Color: " + clan.hexColor()).formatted(Formatting.WHITE));
+        message.append(Text.literal("Color: ").formatted(Formatting.WHITE));
+
+        MinecraftColor color = MinecraftColor.fromColor(Integer.parseInt(clan.hexColor().substring(1), 16));
+        if (color != null) {
+            message.append(Text.literal(color.getDisplayName()).formatted(Formatting.WHITE));
+        } else {
+            message.append(Text.literal(clan.hexColor()).formatted(Formatting.WHITE));
+        }
 
         context.getSource().sendMessage(message);
     }

@@ -1,6 +1,7 @@
 package mnfu.clantag;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import mnfu.clantag.commands.CommandUtils;
 import mnfu.clantag.commands.InfoCommand;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -8,6 +9,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +21,7 @@ public class ClanTag implements ModInitializer {
     public static final String MOD_ID = "Clans";
     public static final String FEEDBACK_PREFIX = "[Clans] ";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final Collection<String> colorNames = Formatting.getNames(true, false);
 
     @Override
     public void onInitialize() {
@@ -59,13 +62,33 @@ public class ClanTag implements ModInitializer {
             var createClanCommand = CommandManager.literal("create")
                     .then(CommandManager.argument("clanName", StringArgumentType.word())
                             .then(CommandManager.argument("hexColor", StringArgumentType.word())
+                                    .suggests((commandContext, suggestionsBuilder) -> {
+                                        for (String c : colorNames) {
+                                            suggestionsBuilder.suggest(c);
+                                        }
+                                        return suggestionsBuilder.buildFuture();
+                                    })
                                     .executes(context -> {
                                         ServerPlayerEntity player = context.getSource().getPlayer();
                                         String clanName = StringArgumentType.getString(context, "clanName");
                                         String hexColor = StringArgumentType.getString(context, "hexColor");
 
-                                        clanManager.createClan(clanName, player.getUuid().toString(), hexColor);
-                                        player.sendMessage(Text.literal("Clan " + clanName + " created!"), false);
+                                        Formatting formatting = Formatting.byName(hexColor);
+                                        if (formatting != null && formatting.isColor()) { // this complaint is because it could be a formatting code, but we know it's a color, so it has a color.
+                                            hexColor = Integer.toHexString(formatting.getColorValue());
+                                        }
+
+                                        if (!hexColor.matches("(?i)^[0-9a-f]{1,6}$")) {
+                                            hexColor = "FFFFFF";
+                                        }
+
+                                        boolean clanCreated = clanManager.createClan(clanName, player.getUuid().toString(), hexColor);
+                                        if (clanCreated) {
+                                            player.sendMessage(Text.literal("Clan " + clanName + " created!"), false);
+                                        } else {
+                                            context.getSource().sendError(Text.literal("Clan " + clanName + " already exists!"));
+                                        }
+
                                         return 1;
                                     })));
 
@@ -77,16 +100,14 @@ public class ClanTag implements ModInitializer {
                                         String clanName = StringArgumentType.getString(context, "clanName");
                                         String targetName = StringArgumentType.getString(context, "playerName");
 
-                                        ServerPlayerEntity target = context.getSource().getServer()
-                                                .getPlayerManager().getPlayer(targetName);
+                                        Optional<UUID> uuid = CommandUtils.getUuid(context, targetName);
 
-                                        if (target == null) {
-                                            executor.sendMessage(Text.literal("Player not found or not online!"), false);
+                                        if (uuid.isEmpty()) {
+                                            executor.sendMessage(Text.literal("Player not found!"), false);
                                             return 0;
                                         }
 
-                                        UUID targetUUID = target.getUuid();
-                                        clanManager.addMember(clanName, targetUUID.toString());
+                                        clanManager.addMember(clanName, uuid.get().toString());
                                         executor.sendMessage(Text.literal("Added " + targetName + " to clan " + clanName + "!"), false);
                                         return 1;
                                     })));
@@ -102,18 +123,17 @@ public class ClanTag implements ModInitializer {
                                     Clan playerClan = clanManager.getPlayerClan(executorUUIDString);
 
                                     if (playerClan != null && playerClan.leader().equals(executorUUIDString)) {
-                                        ServerPlayerEntity target = context.getSource().getServer()
-                                                .getPlayerManager().getPlayer(targetName);
-                                        String targetUUIDString = target.getUuidAsString();
 
-                                        if (target == null) {
+                                        Optional<UUID> targetUuid = CommandUtils.getUuid(context, targetName);
+
+                                        if (targetUuid.isEmpty()) {
                                             executor.sendMessage(Text.literal("Player not found!"), false);
                                             return 0;
-                                        } else if (target.getUuid() == executor.getUuid()) {
+                                        } else if (targetUuid.get() == executor.getUuid()) {
                                             executor.sendMessage(Text.literal("You may not kick yourself!"), false);
                                             return 0;
                                         }
-                                        clanManager.removeMember(playerClan.name(), targetUUIDString);
+                                        clanManager.removeMember(playerClan.name(), targetUuid.get().toString());
                                         executor.sendMessage(Text.literal("Kicked " + targetName + " from clan " + playerClan.name() + "!"), false);
                                         return 1;
                                     } else if (playerClan == null){
