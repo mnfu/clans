@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+import mnfu.clantag.commands.InviteManager;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -19,10 +20,12 @@ public class ClanManager {
     private final Gson gson;
     private final Map<String, Clan> clans = new HashMap<>(); // key: clan name
     private final Logger logger;
+    private final InviteManager inviteManager;
 
-    public ClanManager(File file, Logger logger) {
+    public ClanManager(File file, Logger logger, InviteManager inviteManager) {
         this.logger = logger;
         this.file = file;
+        this.inviteManager = inviteManager;
         this.gson = new GsonBuilder().setPrettyPrinting().create();
         load();
     }
@@ -32,18 +35,20 @@ public class ClanManager {
      *
      * @return true if clan was created, false if clan was not created
      */
-    public boolean createClan(String clanName, String leader, String hexColor) {
+    public boolean createClan(String clanName, String leaderUuid, String hexColor) {
         clanName = forceFirstCharUppercase(clanName);
         if (clans.containsKey(clanName)) {
             return false;
         }
         List<String> members = new ArrayList<>();
-        members.add(leader);
+        members.add(leaderUuid);
         hexColor = "#" + hexColor;
 
-        Clan clan = new Clan(clanName, leader, members, hexColor);
+        Clan clan = new Clan(clanName, leaderUuid, members, hexColor);
         clans.put(clanName, clan);
         save();
+
+        inviteManager.clearInvitesForPlayer(UUID.fromString(leaderUuid));
         return true;
     }
 
@@ -52,10 +57,12 @@ public class ClanManager {
         if (clans.containsKey(clanName)) {
             clans.remove(clanName);
             save();
+
+            inviteManager.clearInvitesForClan(clanName);
         }
     }
 
-    public void addMember(String clanName, String memberId) {
+    public void addMember(String clanName, String memberUuid) {
         clanName = forceFirstCharUppercase(clanName);
         Clan clan = clans.get(clanName);
         if (clan == null) {
@@ -63,12 +70,14 @@ public class ClanManager {
             return;
         }
         List<String> members = new ArrayList<>(clan.members());
-        if (members.contains(memberId)) return;
-        members.add(memberId);
+        if (members.contains(memberUuid)) return;
+        members.add(memberUuid);
 
         Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor());
         clans.put(clanName, updatedClan);
         save();
+
+        inviteManager.clearInvitesForPlayer(UUID.fromString(memberUuid));
     }
 
     public void removeMember(String clanName, String memberUUID) {
