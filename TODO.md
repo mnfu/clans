@@ -12,8 +12,9 @@
 ### If a command is currently in-game and not listed here, it is a WIP or development command.
 
 - **Player Commands** - no restriction
-- [ ] /clan create \<clanName> \<hexColor> - create a new clan. If hexcolor is left blank, set to #FFFFFF
+- [ ] /clan create \<clanName> \<hexColor> - create a new clan. If hexcolor is left blank, set to #FFFFFF. Can use Minecraft's default color names in place of hex
 - [x] /clan leave - leave a clan. If executor is not in a clan, do nothing. If in a clan as a member, leave. If a leader, do nothing.
+- [ ] /clan or /clan help - displays all available commands
 
 - **Clan Leader Commands** - restricted to clan leaders
 - [ ] /clan invite \<playerName> - send an invite to another online player to join a clan
