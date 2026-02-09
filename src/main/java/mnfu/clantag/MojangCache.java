@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class MojangCache {
 
-    private static final long NAME_TTL = 24 * 60 * 60 * 1000L; // 24 hours, b/c if stale, no biggie. might display old name, and this is used more frequently.
+    private static final long NAME_TTL = 7 * 24 * 60 * 60 * 1000L; // 7 days, b/c if stale, no biggie. might display old name, and this is used more frequently.
     private static final long UUID_TTL = 15 * 60 * 1000L; // 15 minutes, b/c if stale, could be bad. inviting the wrong account to a clan for example.
 
     private final ConcurrentHashMap<UUID, CacheEntry<String>> uuidToName = new ConcurrentHashMap<>();

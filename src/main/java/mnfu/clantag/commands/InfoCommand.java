@@ -5,7 +5,6 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
-import mnfu.clantag.ClanTag;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -18,6 +17,7 @@ import net.minecraft.util.Formatting;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static mnfu.clantag.commands.CommandUtils.getPlayerName;
 
@@ -45,7 +45,7 @@ public class InfoCommand {
     private int executeForSelf(CommandContext<ServerCommandSource> context) {
         ServerPlayerEntity executor = context.getSource().getPlayer();
         if (executor == null) { // not a player if null, assume console
-            context.getSource().sendError(Text.literal(ClanTag.FEEDBACK_PREFIX + "You are not a player, so you must specify a clan name."));
+            context.getSource().sendError(Text.literal("You are not a player, so you must specify a clan name."));
             return 0;
         }
 
@@ -83,53 +83,77 @@ public class InfoCommand {
                 .append("\n");
 
         UUID leaderUUID = UUID.fromString(clan.leader());
-        String leaderName = getPlayerName(context, leaderUUID).orElse("Unknown Player");
 
-        message.append(Text.literal("Leader: ").formatted(Formatting.WHITE))
-                .append(Text.literal(leaderName).formatted(Formatting.YELLOW))
-                .append("\n");
+        // async leader name
+        getPlayerName(context, leaderUUID).thenAccept(optLeaderName -> {
+            String leaderName = optLeaderName.orElse("Unknown Player");
 
-        message.append(Text.literal("Members: ").formatted(Formatting.WHITE))
-                .append(formatMembersList(context, clan))
-                .append("\n");
+            message.append(Text.literal("Leader: ").formatted(Formatting.WHITE))
+                    .append(Text.literal(leaderName).formatted(Formatting.YELLOW))
+                    .append("\n");
 
-        message.append(Text.literal("Color: ").formatted(Formatting.WHITE));
+            // async members
+            formatMembersList(context, clan).thenAccept(membersText -> {
+                message.append(Text.literal("Members: ").formatted(Formatting.WHITE))
+                        .append(membersText)
+                        .append("\n");
 
-        MinecraftColor color = MinecraftColor.fromColor(Integer.parseInt(clan.hexColor().substring(1), 16));
-        if (color != null) {
-            message.append(Text.literal(color.getDisplayName()).formatted(Formatting.WHITE));
-        } else {
-            message.append(Text.literal(clan.hexColor()).formatted(Formatting.WHITE));
-        }
+                // color
+                message.append(Text.literal("Color: ").formatted(Formatting.WHITE));
 
-        context.getSource().sendMessage(message);
+                MinecraftColor color = MinecraftColor.fromColor(
+                        Integer.parseInt(clan.hexColor().substring(1), 16)
+                );
+                if (color != null) {
+                    message.append(Text.literal(color.getDisplayName()).formatted(Formatting.WHITE));
+                } else {
+                    message.append(Text.literal(clan.hexColor()).formatted(Formatting.WHITE));
+                }
+
+                // finally send the message on the main thread
+                context.getSource().getServer().execute(() -> {
+                    context.getSource().sendMessage(message);
+                });
+            });
+        });
     }
 
-    private MutableText formatMembersList(CommandContext<ServerCommandSource> context, Clan clan) {
-        MutableText list = Text.empty();
+    private CompletableFuture<MutableText> formatMembersList(CommandContext<ServerCommandSource> context, Clan clan) {
         List<String> memberUuids = clan.members();
+        String leaderUuid = clan.leader();
+        boolean[] leaderFound = {false}; // first leader only
 
-        boolean leaderFound = false;
-        for (int i = 0; i < memberUuids.size(); i++) {
-            String uuidStr = memberUuids.get(i);
-            UUID uuid = UUID.fromString(uuidStr);
-            String name = getPlayerName(context, uuid).orElse("Unknown Player");
+        // create a future per member
+        List<CompletableFuture<MutableText>> futures = memberUuids.stream()
+                .map(uuidStr -> {
+                    UUID uuid = UUID.fromString(uuidStr);
+                    return getPlayerName(context, uuid).thenApply(optName -> {
+                        String name = optName.orElse("Unknown Player");
 
-            MutableText nameText = Text.literal(name);
+                        Formatting format = Formatting.GRAY;
+                        if (!leaderFound[0] && uuidStr.equals(leaderUuid)) {
+                            format = Formatting.YELLOW;
+                            leaderFound[0] = true;
+                        }
 
-            Formatting format = Formatting.WHITE; // default member color
-            if (!leaderFound && uuidStr.equals(clan.leader())) {
-                format = Formatting.YELLOW; // leader color
-                leaderFound = true;
-            }
-            nameText.formatted(format);
+                        return Text.literal(name).formatted(format);
+                    });
+                })
+                .toList();
 
-            list.append(nameText);
+        CompletableFuture<?>[] futuresArray = futures.toArray(CompletableFuture[]::new);
 
-            if (i < memberUuids.size() - 1) {
-                list.append(Text.literal(", ").formatted(Formatting.GRAY));
-            }
-        }
-        return list;
+        // combine all futures in order, append comma between members
+        return CompletableFuture.allOf(futuresArray)
+                .thenApply(v -> {
+                    MutableText list = Text.empty();
+                    for (int i = 0; i < futures.size(); i++) {
+                        list.append(futures.get(i).join()); // safe, already completed
+                        if (i < futures.size() - 1) {
+                            list.append(Text.literal(", ").formatted(Formatting.GRAY));
+                        }
+                    }
+                    return list;
+                });
     }
 }
