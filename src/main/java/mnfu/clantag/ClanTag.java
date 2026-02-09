@@ -96,19 +96,20 @@ public class ClanTag implements ModInitializer {
                     .then(CommandManager.argument("clanName", StringArgumentType.word())
                             .then(CommandManager.argument("playerName", StringArgumentType.word())
                                     .executes(context -> {
-                                        ServerPlayerEntity executor = context.getSource().getPlayer();
                                         String clanName = StringArgumentType.getString(context, "clanName");
                                         String targetName = StringArgumentType.getString(context, "playerName");
 
-                                        Optional<UUID> uuid = CommandUtils.getUuid(context, targetName);
-
-                                        if (uuid.isEmpty()) {
-                                            executor.sendMessage(Text.literal("Player not found!"), false);
-                                            return 0;
-                                        }
-
-                                        clanManager.addMember(clanName, uuid.get().toString());
-                                        executor.sendMessage(Text.literal("Added " + targetName + " to clan " + clanName + "!"), false);
+                                        // async UUID lookup
+                                        CommandUtils.getUuid(context, targetName).thenAccept(optUuid -> {
+                                            context.getSource().getServer().execute(() -> {
+                                                if (optUuid.isEmpty()) {
+                                                    context.getSource().sendError(Text.literal("Player not found!"));
+                                                    return;
+                                                }
+                                                clanManager.addMember(clanName, optUuid.get().toString());
+                                                context.getSource().sendMessage(Text.literal("Added " + targetName + " to clan " + clanName + "!"));
+                                            });
+                                        });
                                         return 1;
                                     })));
 
@@ -118,30 +119,39 @@ public class ClanTag implements ModInitializer {
                                     ServerPlayerEntity executor = context.getSource().getPlayer();
                                     String targetName = StringArgumentType.getString(context, "playerName");
 
-                                    // check that this player is actually the leader of a clan, if so, continue execution
                                     String executorUUIDString = executor.getUuidAsString();
                                     Clan playerClan = clanManager.getPlayerClan(executorUUIDString);
 
-                                    if (playerClan != null && playerClan.leader().equals(executorUUIDString)) {
-
-                                        Optional<UUID> targetUuid = CommandUtils.getUuid(context, targetName);
-
-                                        if (targetUuid.isEmpty()) {
-                                            executor.sendMessage(Text.literal("Player not found!"), false);
-                                            return 0;
-                                        } else if (targetUuid.get() == executor.getUuid()) {
-                                            executor.sendMessage(Text.literal("You may not kick yourself!"), false);
-                                            return 0;
-                                        }
-                                        clanManager.removeMember(playerClan.name(), targetUuid.get().toString());
-                                        executor.sendMessage(Text.literal("Kicked " + targetName + " from clan " + playerClan.name() + "!"), false);
-                                        return 1;
-                                    } else if (playerClan == null){
-                                        executor.sendMessage(Text.literal("You are not in a clan!"), false);
+                                    if (playerClan == null) {
+                                        context.getSource().sendError(Text.literal("You are not in a clan!"));
                                         return 0;
                                     }
-                                    executor.sendMessage(Text.literal("You are not the leader of a clan!"), false);
-                                    return 0;
+
+                                    if (!playerClan.leader().equals(executorUUIDString)) {
+                                        context.getSource().sendError(Text.literal("You are not the leader of a clan!"));
+                                        return 0;
+                                    }
+
+                                    // async UUID lookup
+                                    CommandUtils.getUuid(context, targetName).thenAccept(optUuid -> {
+                                        context.getSource().getServer().execute(() -> { // back on main thread
+                                            if (optUuid.isEmpty()) {
+                                                context.getSource().sendError(Text.literal("Player not found!"));
+                                                return;
+                                            }
+
+                                            UUID targetUuid = optUuid.get();
+                                            if (targetUuid.equals(executor.getUuid())) {
+                                                context.getSource().sendMessage(Text.literal("You may not kick yourself!"));
+                                                return;
+                                            }
+
+                                            clanManager.removeMember(playerClan.name(), targetUuid.toString());
+                                            context.getSource().sendMessage(Text.literal("Kicked " + targetName + " from clan " + playerClan.name() + "!"));
+                                        });
+                                    });
+
+                                    return 1;
                                 }));
 
             var leaveClanCommand = CommandManager.literal("leave")

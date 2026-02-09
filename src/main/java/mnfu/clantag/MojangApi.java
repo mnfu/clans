@@ -10,29 +10,33 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public final class MojangApi {
 
     private static final HttpClient CLIENT = HttpClient.newHttpClient();
     private static final MojangCache CACHE = new MojangCache();
 
-    // example use: String name = MojangApi.getUsername(uuid).orElse("Unknown Player");
-
     /**
      * Resolves the current Minecraft username associated with the given UUID.
      *
-     * <p>This method may return {@link Optional#empty()} if the UUID is invalid,
-     * the request fails, the API is rate-limited, or the result was previously
-     * cached as unresolved.</p>
+     * <p>The returned {@link CompletableFuture} completes with an {@link Optional} containing
+     * the username if found. If the UUID is invalid, the request fails, or the result was
+     * previously cached as unresolved, the {@link Optional} will be empty.</p>
      *
-     * @param uuid the player's UUID
-     * @return an {@link Optional} containing the username if found, otherwise {@link Optional#empty()}
+     * <p>The result is cached in {@link MojangCache} for future lookups. Rate limiting,
+     * invalid UUIDs, or API errors may temporarily cache an empty result to avoid repeated
+     * failed requests.</p>
+     *
+     * @param uuid the UUID of the player
+     * @return a {@link CompletableFuture} that completes with an {@link Optional} containing
+     *         the username if found, or empty if not
      */
-    public static Optional<String> getUsername(UUID uuid) {
+    public static CompletableFuture<Optional<String>> getUsername(UUID uuid) {
         String username = CACHE.getUsername(uuid);
-        if (username != null) return Optional.of(username);
+        if (username != null) return CompletableFuture.completedFuture(Optional.of(username));
         if (CACHE.containsKey(uuid)) {
-            return Optional.empty(); // data was cached as null (meaning it was a bad request previously)
+            return CompletableFuture.completedFuture(Optional.empty()); // data was cached as null (meaning it was a bad request previously)
         }
         try {
             String strippedUUID = uuid.toString().replaceAll("-", "");
@@ -42,13 +46,13 @@ public final class MojangApi {
                     ))
                     .GET()
                     .build();
-            HttpResponse<String> response = CLIENT.send(
+            return CLIENT.sendAsync(
                     request,
-                    HttpResponse.BodyHandlers.ofString()
-            );
-            return handleUsernameResponse(response, uuid);
+                    HttpResponse.BodyHandlers.ofString())
+                    .thenApply(response -> handleUsernameResponse(response, uuid))
+                    .exceptionally(ex -> Optional.empty());
         } catch (Exception e) {
-            return Optional.empty();
+            return CompletableFuture.completedFuture(Optional.empty());
         }
     }
 
@@ -79,18 +83,23 @@ public final class MojangApi {
     /**
      * Resolves the UUID associated with the given Minecraft username.
      *
-     * <p>This method may return {@link Optional#empty()} if the username is invalid,
-     * the request fails, the API is rate-limited, or the result was previously
-     * cached as unresolved.</p>
+     * <p>The returned {@link CompletableFuture} completes with an {@link Optional} containing
+     * the UUID if found. If the username is invalid, the request fails, or the result was
+     * previously cached as unresolved, the {@link Optional} will be empty.</p>
+     *
+     * <p>The result is cached in {@link MojangCache} for future lookups. Rate limiting,
+     * invalid usernames, or API errors may temporarily cache an empty result to avoid repeated
+     * failed requests.</p>
      *
      * @param username the Minecraft username
-     * @return an {@link Optional} containing the UUID if found, otherwise {@link Optional#empty()}
+     * @return a {@link CompletableFuture} that completes with an {@link Optional} containing
+     *         the UUID if found, or empty if not
      */
-    public static Optional<UUID> getUuid(String username) {
+    public static CompletableFuture<Optional<UUID>> getUuid(String username) {
         UUID uuid = CACHE.getUUID(username);
-        if (uuid != null) return Optional.of(uuid);
+        if (uuid != null) return CompletableFuture.completedFuture(Optional.of(uuid));
         if (CACHE.containsKey(username)) {
-            return Optional.empty();
+            return CompletableFuture.completedFuture(Optional.empty());
         }
         try {
             HttpRequest request = HttpRequest.newBuilder()
@@ -99,13 +108,12 @@ public final class MojangApi {
                     ))
                     .GET()
                     .build();
-            HttpResponse<String> response = CLIENT.send(
-                    request,
-                    HttpResponse.BodyHandlers.ofString()
-            );
-            return handleUuidResponse(response, username);
+            return CLIENT.sendAsync(
+                    request, HttpResponse.BodyHandlers.ofString())
+                        .thenApply(response -> handleUuidResponse(response, username))
+                        .exceptionally(ex -> Optional.empty());
         } catch (Exception e) {
-            return Optional.empty();
+            return CompletableFuture.completedFuture(Optional.empty());
         }
     }
 
@@ -142,10 +150,19 @@ public final class MojangApi {
         }
     }
 
+    /**
+     * Caches a currently online player’s UUID and username in {@link MojangCache}.
+     *
+     * @param player the online {@link ServerPlayerEntity} to cache
+     */
     public static void cachePlayer(ServerPlayerEntity player) {
         CACHE.put(player.getUuid(), player.getName().getString());
     }
 
+    /**
+     * Clears the entire {@link MojangCache}, removing all cached UUID → username and
+     * username → UUID mappings.
+     */
     public static void clearCache() {
         CACHE.nuke();
     }
