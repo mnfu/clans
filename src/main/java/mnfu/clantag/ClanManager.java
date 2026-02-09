@@ -27,11 +27,15 @@ public class ClanManager {
         load();
     }
 
-    public void createClan(String clanName, String leader, String hexColor) {
+    /**
+     * tries to create a clan
+     *
+     * @return true if clan was created, false if clan was not created
+     */
+    public boolean createClan(String clanName, String leader, String hexColor) {
         clanName = forceFirstCharUppercase(clanName);
         if (clans.containsKey(clanName)) {
-            System.out.println("Clan already exists!");
-            return;
+            return false;
         }
         List<String> members = new ArrayList<>();
         members.add(leader);
@@ -40,6 +44,7 @@ public class ClanManager {
         Clan clan = new Clan(clanName, leader, members, hexColor);
         clans.put(clanName, clan);
         save();
+        return true;
     }
 
     public void deleteClan(String clanName) {
@@ -161,6 +166,6 @@ public class ClanManager {
     }
 
     private String forceFirstCharUppercase(String str) {
-        return str.substring(0, 1).toUpperCase() + str.substring(1);
+        return Character.toUpperCase(str.charAt(0)) + str.substring(1);
     }
 }
