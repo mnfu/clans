@@ -19,6 +19,7 @@ public class ClanManager {
     private final File file;
     private final Gson gson;
     private final Map<String, Clan> clans = new HashMap<>(); // key: clan name
+    private final Map<String, String> playerToClanName = new HashMap<>(); // key: player uuid
     private final Logger logger;
     private final InviteManager inviteManager;
 
@@ -40,12 +41,13 @@ public class ClanManager {
         if (clans.containsKey(clanName)) {
             return false;
         }
-        List<String> members = new ArrayList<>();
+        LinkedHashSet<String> members = new LinkedHashSet<>();
         members.add(leaderUuid);
         hexColor = "#" + hexColor;
 
         Clan clan = new Clan(clanName, leaderUuid, members, hexColor);
         clans.put(clanName, clan);
+        playerToClanName.put(leaderUuid, clan.name());
         save();
 
         inviteManager.clearInvitesForPlayer(UUID.fromString(leaderUuid));
@@ -69,12 +71,13 @@ public class ClanManager {
             System.out.println("Clan not found!");
             return;
         }
-        List<String> members = new ArrayList<>(clan.members());
+        LinkedHashSet<String> members = new LinkedHashSet<>(clan.members());
         if (members.contains(memberUuid)) return;
         members.add(memberUuid);
 
         Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor());
         clans.put(clanName, updatedClan);
+        playerToClanName.put(memberUuid, updatedClan.name());
         save();
 
         inviteManager.clearInvitesForPlayer(UUID.fromString(memberUuid));
@@ -83,11 +86,12 @@ public class ClanManager {
     public void removeMember(String clanName, String memberUUID) {
         Clan clan = clans.get(clanName);
         if (clan == null) return;
-        List<String> members = new ArrayList<>(clan.members());
+        LinkedHashSet<String> members = new LinkedHashSet<>(clan.members());
         members.remove(memberUUID);
 
         Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor());
         clans.put(clanName, updatedClan);
+        playerToClanName.remove(memberUUID);
         save();
     }
 
@@ -110,10 +114,9 @@ public class ClanManager {
 
     @Nullable
     public Clan getPlayerClan(String playerUUID) {
-        for (Clan clan : clans.values()) {
-            if (clan.members().contains(playerUUID)) return clan;
-        }
-        return null;
+        String clanName = playerToClanName.get(playerUUID);
+        if (clanName == null) return null;
+        return clans.get(clanName);
     }
 
     public Collection<Clan> getAllClans() {
@@ -126,6 +129,7 @@ public class ClanManager {
             Type type = new TypeToken<Map<String, Clan>>(){}.getType();
             Map<String, Clan> loaded = gson.fromJson(reader, type);
             clans.clear();
+            playerToClanName.clear();
             if (loaded != null) {
                 for (Map.Entry<String, Clan> entry : loaded.entrySet()) {
                     Clan readClan = entry.getValue();
@@ -133,6 +137,9 @@ public class ClanManager {
                     String adjustedClanName = forceFirstCharUppercase(readClan.name());
                     Clan clan = new Clan(adjustedClanName, readClan.leader(), readClan.members(), readClan.hexColor());
                     clans.put(adjustedClanName, clan);
+                    for (String member : clan.members()) {
+                        playerToClanName.put(member, clan.name());
+                    }
                 }
             }
         } catch (IOException e) {

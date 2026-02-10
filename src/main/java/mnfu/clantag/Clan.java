@@ -1,6 +1,6 @@
 package mnfu.clantag;
 
-import java.util.List;
+import java.util.LinkedHashSet;
 
-public record Clan(String name, String leader, List<String> members, String hexColor) {
+public record Clan(String name, String leader, LinkedHashSet<String> members, String hexColor) {
 }
