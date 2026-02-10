@@ -15,6 +15,7 @@ import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -119,7 +120,7 @@ public class InfoCommand {
     }
 
     private CompletableFuture<MutableText> formatMembersList(CommandContext<ServerCommandSource> context, Clan clan) {
-        List<String> memberUuids = clan.members();
+        LinkedHashSet<String> memberUuids = clan.members();
         String leaderUuid = clan.leader();
         boolean[] leaderFound = {false}; // first leader only
 

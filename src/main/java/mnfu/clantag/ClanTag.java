@@ -1,6 +1,7 @@
 package mnfu.clantag;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import eu.pb4.placeholders.api.PlaceholderResult;
 import mnfu.clantag.commands.CommandUtils;
 import mnfu.clantag.commands.InfoCommand;
 import mnfu.clantag.commands.InviteCommand;
@@ -12,8 +13,10 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import eu.pb4.placeholders.api.Placeholders;
 
 import java.io.File;
 import java.util.*;
@@ -39,6 +42,36 @@ public class ClanTag implements ModInitializer {
             MojangApi.cachePlayer(player);
         }));
 
+        // register placeholders
+        Placeholders.register(
+                Identifier.of("clantag", "player_clan_name"),
+                (ctx, arg) -> {
+                    if (!ctx.hasPlayer() || ctx.player() == null) return PlaceholderResult.invalid();
+                    Clan clan = clanManager.getPlayerClan(ctx.player().getUuidAsString());
+                    if (clan == null) return PlaceholderResult.value(Text.literal(""));
+                    return PlaceholderResult.value(Text.literal(clan.name()));
+                }
+        );
+        Placeholders.register(
+                Identifier.of("clantag", "player_clan_name_colored"),
+                (ctx, arg) -> {
+                    if (!ctx.hasPlayer() || ctx.player() == null) return PlaceholderResult.invalid();
+                    Clan clan = clanManager.getPlayerClan(ctx.player().getUuidAsString());
+                    if (clan == null) return PlaceholderResult.value(Text.literal(""));
+                    return PlaceholderResult.value(Text.literal(clan.name()).withColor(Integer.parseInt(clan.hexColor().substring(1), 16)));
+                }
+        );
+        Placeholders.register(
+                Identifier.of("clantag", "spaced_arrow_icon_if_player_in_clan"),
+                (ctx, arg) -> {
+                    if (!ctx.hasPlayer() || ctx.player() == null) return PlaceholderResult.invalid();
+                    Clan clan = clanManager.getPlayerClan(ctx.player().getUuidAsString());
+                    if (clan == null) return PlaceholderResult.value(Text.literal(""));
+                    return PlaceholderResult.value(Text.literal(" ⇨ "));
+                }
+        );
+
+        // register commands
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 
             var baseCommand = CommandManager.literal("clan");
