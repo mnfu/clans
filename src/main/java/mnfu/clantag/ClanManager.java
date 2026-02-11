@@ -2,6 +2,7 @@ package mnfu.clantag;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 
 import mnfu.clantag.commands.InviteManager;
@@ -19,7 +20,7 @@ public class ClanManager {
     private final File file;
     private final Gson gson;
     private final Map<String, Clan> clans = new HashMap<>(); // key: clan name
-    private final Map<String, String> playerToClanName = new HashMap<>(); // key: player uuid
+    private final Map<UUID, String> playerToClanName = new HashMap<>(); // key: player uuid
     private final Logger logger;
     private final InviteManager inviteManager;
 
@@ -36,12 +37,12 @@ public class ClanManager {
      *
      * @return true if clan was created, false if clan was not created
      */
-    public boolean createClan(String clanName, String leaderUuid, String hexColor) {
+    public boolean createClan(String clanName, UUID leaderUuid, String hexColor) {
         clanName = forceFirstCharUppercase(clanName);
         if (clans.containsKey(clanName)) {
             return false;
         }
-        LinkedHashSet<String> members = new LinkedHashSet<>();
+        LinkedHashSet<UUID> members = new LinkedHashSet<>();
         members.add(leaderUuid);
         hexColor = "#" + hexColor;
 
@@ -50,28 +51,31 @@ public class ClanManager {
         playerToClanName.put(leaderUuid, clan.name());
         save();
 
-        inviteManager.clearInvitesForPlayer(UUID.fromString(leaderUuid));
+        inviteManager.clearInvitesForPlayer(leaderUuid);
         return true;
     }
 
     public void deleteClan(String clanName) {
         clanName = forceFirstCharUppercase(clanName);
         if (clans.containsKey(clanName)) {
+            Clan clan = clans.get(clanName);
+            for (UUID memberUuid : clan.members()) {
+                playerToClanName.remove(memberUuid);
+            }
             clans.remove(clanName);
             save();
-
             inviteManager.clearInvitesForClan(clanName);
         }
     }
 
-    public void addMember(String clanName, String memberUuid) {
+    public void addMember(String clanName, UUID memberUuid) {
         clanName = forceFirstCharUppercase(clanName);
         Clan clan = clans.get(clanName);
         if (clan == null) {
             System.out.println("Clan not found!");
             return;
         }
-        LinkedHashSet<String> members = new LinkedHashSet<>(clan.members());
+        LinkedHashSet<UUID> members = new LinkedHashSet<>(clan.members());
         if (members.contains(memberUuid)) return;
         members.add(memberUuid);
 
@@ -80,13 +84,13 @@ public class ClanManager {
         playerToClanName.put(memberUuid, updatedClan.name());
         save();
 
-        inviteManager.clearInvitesForPlayer(UUID.fromString(memberUuid));
+        inviteManager.clearInvitesForPlayer(memberUuid);
     }
 
-    public void removeMember(String clanName, String memberUUID) {
+    public void removeMember(String clanName, UUID memberUUID) {
         Clan clan = clans.get(clanName);
         if (clan == null) return;
-        LinkedHashSet<String> members = new LinkedHashSet<>(clan.members());
+        LinkedHashSet<UUID> members = new LinkedHashSet<>(clan.members());
         members.remove(memberUUID);
 
         Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor());
@@ -95,7 +99,7 @@ public class ClanManager {
         save();
     }
 
-    public void changeLeader(String clanName, String newLeaderUUID) {
+    public void changeLeader(String clanName, UUID newLeaderUUID) {
         Clan clan = clans.get(clanName);
         if (clan == null) return;
         if (!clan.members().contains(newLeaderUUID)) return;
@@ -113,38 +117,112 @@ public class ClanManager {
     }
 
     @Nullable
-    public Clan getPlayerClan(String playerUUID) {
+    public Clan getPlayerClan(UUID playerUUID) {
         String clanName = playerToClanName.get(playerUUID);
         if (clanName == null) return null;
         return clans.get(clanName);
+    }
+
+    public boolean playerInAClan(UUID playerUUID) {
+        String clanName = playerToClanName.get(playerUUID);
+        return clanName != null;
+    }
+
+    public int clanCount() {
+        return clans.size();
     }
 
     public Collection<Clan> getAllClans() {
         return clans.values();
     }
 
-    public void load() {
-        if (!file.exists()) return; // save() handles creating the files & directories. return early if it doesn't exist.
+    public boolean load() {
+        if (!file.exists()) return false;
+
         try (Reader reader = new FileReader(file)) {
-            Type type = new TypeToken<Map<String, Clan>>(){}.getType();
+            Type type = new TypeToken<Map<String, Clan>>() {}.getType();
             Map<String, Clan> loaded = gson.fromJson(reader, type);
+
             clans.clear();
             playerToClanName.clear();
-            if (loaded != null) {
-                for (Map.Entry<String, Clan> entry : loaded.entrySet()) {
+
+            if (loaded == null) return false;
+
+            for (Map.Entry<String, Clan> entry : loaded.entrySet()) {
+                try {
                     Clan readClan = entry.getValue();
-                    // enforce the standard of capital letter starting clan names even if file was manually edited
-                    String adjustedClanName = forceFirstCharUppercase(readClan.name());
-                    Clan clan = new Clan(adjustedClanName, readClan.leader(), readClan.members(), readClan.hexColor());
-                    clans.put(adjustedClanName, clan);
-                    for (String member : clan.members()) {
-                        playerToClanName.put(member, clan.name());
+                    if (readClan == null) {
+                        logger.warn("Encountered null clan entry for key: {}", entry.getKey());
+                        continue;
                     }
+
+                    String adjustedClanName = forceFirstCharUppercase(readClan.name());
+                    LinkedHashSet<UUID> cleanedMembers = new LinkedHashSet<>();
+
+                    if (readClan.members() != null) {
+                        for (UUID memberUUID : readClan.members()) {
+                            if (memberUUID == null) {
+                                logger.warn("Null UUID found in clan {}. Skipping.", adjustedClanName);
+                                continue;
+                            }
+
+                            if (playerToClanName.containsKey(memberUUID)) {
+                                String existingClanName = playerToClanName.get(memberUUID);
+                                Clan existingClan = clans.get(existingClanName);
+
+                                boolean isLeaderInExisting = existingClan != null && memberUUID.equals(existingClan.leader());
+                                boolean isLeaderInCurrent = memberUUID.equals(readClan.leader());
+
+                                if (isLeaderInExisting) {
+                                    if (isLeaderInCurrent) {
+                                        logger.warn("Skipping clan {} because its leader {} is already leading another clan", adjustedClanName, memberUUID);
+                                        readClan = null;
+                                        break;
+                                    }
+                                    logger.warn("UUID {} is a leader in clan {}. Respecting first occurrence.", memberUUID, existingClanName);
+                                    continue;
+                                }
+
+                                if (isLeaderInCurrent) {
+                                    logger.warn("UUID {} is the leader of clan {}. Overriding previous clan {}.", memberUUID, adjustedClanName, existingClanName);
+                                } else {
+                                    logger.warn("UUID {} appears in multiple clans. Respecting first occurrence.", memberUUID);
+                                    continue;
+                                }
+                            }
+
+                            playerToClanName.put(memberUUID, adjustedClanName);
+                            cleanedMembers.add(memberUUID);
+                        }
+                    }
+
+                    if (readClan != null) {
+                        // ensure the leader is always in the member list
+                        if (!cleanedMembers.contains(readClan.leader())) {
+                            cleanedMembers.add(readClan.leader());
+                            logger.info("Added leader {} to members of clan {}", readClan.leader(), adjustedClanName);
+                        }
+
+                        Clan clan = new Clan(adjustedClanName, readClan.leader(), cleanedMembers, readClan.hexColor());
+                        clans.put(adjustedClanName, clan);
+                    }
+
+                } catch (Exception e) {
+                    logger.error("Error processing clan {}. Skipping this clan.", entry.getKey(), e);
                 }
             }
+
         } catch (IOException e) {
-            logger.error("Failed to load clans", e);
+            logger.error("Failed to read clans.json", e);
+            return false;
+        } catch (JsonSyntaxException e) {
+            logger.error("Failed to parse clans.json. Was it manually edited incorrectly?", e);
+            return false;
+        } catch (Exception e) {
+            logger.error("Unexpected error loading clans.json", e);
+            return false;
         }
+        return true;
     }
 
     public void save() {

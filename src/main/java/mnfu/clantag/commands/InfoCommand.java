@@ -50,7 +50,7 @@ public class InfoCommand {
             return 0;
         }
 
-        Clan clan = clanManager.getPlayerClan(executor.getUuidAsString());
+        Clan clan = clanManager.getPlayerClan(executor.getUuid());
 
         if (clan == null) {
             context.getSource().sendError(Text.literal("Clan not found!"));
@@ -83,10 +83,8 @@ public class InfoCommand {
         message.append(Text.literal(" (" + clan.name() + ")").formatted(Formatting.GRAY))
                 .append("\n");
 
-        UUID leaderUUID = UUID.fromString(clan.leader());
-
         // async leader name
-        getPlayerName(context, leaderUUID).thenAccept(optLeaderName -> {
+        getPlayerName(context, clan.leader()).thenAccept(optLeaderName -> {
             String leaderName = optLeaderName.orElse("Unknown Player");
 
             message.append(Text.literal("Leader: ").formatted(Formatting.WHITE))
@@ -120,26 +118,22 @@ public class InfoCommand {
     }
 
     private CompletableFuture<MutableText> formatMembersList(CommandContext<ServerCommandSource> context, Clan clan) {
-        LinkedHashSet<String> memberUuids = clan.members();
-        String leaderUuid = clan.leader();
-        boolean[] leaderFound = {false}; // first leader only
+        LinkedHashSet<UUID> memberUuids = clan.members();
+        UUID leaderUuid = clan.leader();
 
         // create a future per member
         List<CompletableFuture<MutableText>> futures = memberUuids.stream()
-                .map(uuidStr -> {
-                    UUID uuid = UUID.fromString(uuidStr);
-                    return getPlayerName(context, uuid).thenApply(optName -> {
+                .map(memberUuid ->
+                    getPlayerName(context, memberUuid).thenApply(optName -> {
                         String name = optName.orElse("Unknown Player");
 
-                        Formatting format = Formatting.GRAY;
-                        if (!leaderFound[0] && uuidStr.equals(leaderUuid)) {
-                            format = Formatting.YELLOW;
-                            leaderFound[0] = true;
-                        }
+                        Formatting format = memberUuid.equals(leaderUuid)
+                                ? Formatting.YELLOW
+                                : Formatting.GRAY;
 
                         return Text.literal(name).formatted(format);
-                    });
-                })
+                    })
+                )
                 .toList();
 
         CompletableFuture<?>[] futuresArray = futures.toArray(CompletableFuture[]::new);
