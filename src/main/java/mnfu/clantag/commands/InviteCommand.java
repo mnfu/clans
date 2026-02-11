@@ -78,15 +78,15 @@ public class InviteCommand {
             return 0;
         }
 
-        String executorUuidString = executor.getUuidAsString();
-        Clan executorClan = clanManager.getPlayerClan(executorUuidString);
+        UUID executorUuid = executor.getUuid();
+        Clan executorClan = clanManager.getPlayerClan(executorUuid);
 
         if (executorClan == null) {
             context.getSource().sendError(Text.literal("You must be in a clan to invite players!"));
             return 0;
         }
 
-        if (!executorClan.leader().equals(executorUuidString)) {
+        if (!executorClan.leader().equals(executorUuid)) {
             context.getSource().sendError(Text.literal("Only the clan leader can invite players!"));
             return 0;
         }
@@ -106,7 +106,7 @@ public class InviteCommand {
                 return;
             }
 
-            Clan targetClan = clanManager.getPlayerClan(targetUuid.toString());
+            Clan targetClan = clanManager.getPlayerClan(targetUuid);
             if (targetClan != null) {
                 context.getSource().sendError(Text.literal(targetName + " is already in a clan!"));
                 return;
@@ -167,9 +167,8 @@ public class InviteCommand {
 
         String clanName = StringArgumentType.getString(context, "clanName");
         UUID executorUuid = executor.getUuid();
-        String executorUuidString = executor.getUuidAsString();
 
-        Clan currentClan = clanManager.getPlayerClan(executorUuidString);
+        Clan currentClan = clanManager.getPlayerClan(executorUuid);
         if (currentClan != null) {
             context.getSource().sendError(Text.literal("You are already in a clan! Leave your current clan first."));
             return 0;
@@ -187,7 +186,7 @@ public class InviteCommand {
             return 0;
         }
 
-        clanManager.addMember(clanName, executorUuidString);
+        clanManager.addMember(clanName, executorUuid);
 
         inviteManager.clearInvitesForPlayer(executorUuid);
 
