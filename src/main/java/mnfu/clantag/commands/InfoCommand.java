@@ -77,8 +77,10 @@ public class InfoCommand {
     private void displayClanInfo(CommandContext<ServerCommandSource> context, Clan clan) {
         MutableText message = Text.empty();
 
+        TextColor clanColor = TextColor.parse(clan.hexColor()).getOrThrow();
+
         message.append(Text.literal(clan.name())
-                .setStyle(Style.EMPTY.withColor(TextColor.parse(clan.hexColor()).getOrThrow())));
+                .setStyle(Style.EMPTY.withColor(clanColor)));
 
         message.append(Text.literal(" (" + clan.name() + ")").formatted(Formatting.GRAY))
                 .append("\n");
@@ -104,15 +106,15 @@ public class InfoCommand {
                         Integer.parseInt(clan.hexColor().substring(1), 16)
                 );
                 if (color != null) {
-                    message.append(Text.literal(color.getDisplayName()).formatted(Formatting.WHITE));
+                    message.append(Text.literal(color.getDisplayName())
+                            .setStyle(Style.EMPTY.withColor(clanColor)));
                 } else {
-                    message.append(Text.literal(clan.hexColor()).formatted(Formatting.WHITE));
+                    message.append(Text.literal(clan.hexColor())
+                            .setStyle(Style.EMPTY.withColor(clanColor)));
                 }
 
                 // finally send the message on the main thread
-                context.getSource().getServer().execute(() -> {
-                    context.getSource().sendMessage(message);
-                });
+                context.getSource().getServer().execute(() -> context.getSource().sendMessage(message));
             });
         });
     }

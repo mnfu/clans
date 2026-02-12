@@ -17,11 +17,11 @@ import java.util.UUID;
 
 public class CreateCommand {
     private final ClanManager clanManager;
-    private final Collection<String> colorNames; // list of color names for suggestions
+    private final Collection<String> colorNames = Formatting.getNames(true, false);
 
-    public CreateCommand(ClanManager clanManager, Collection<String> colorNames) {
+
+    public CreateCommand(ClanManager clanManager) {
         this.clanManager = clanManager;
-        this.colorNames = colorNames;
     }
 
     public LiteralArgumentBuilder<ServerCommandSource> build() {
