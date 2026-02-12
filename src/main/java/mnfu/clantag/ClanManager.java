@@ -2,7 +2,7 @@ package mnfu.clantag;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 
 import mnfu.clantag.commands.InviteManager;
@@ -23,6 +23,7 @@ public class ClanManager {
     private final Map<UUID, String> playerToClanName = new HashMap<>(); // key: player uuid
     private final Logger logger;
     private final InviteManager inviteManager;
+    private static boolean ENABLE_SAVES = true;
 
     public ClanManager(File file, Logger logger, InviteManager inviteManager) {
         this.logger = logger;
@@ -139,12 +140,13 @@ public class ClanManager {
     public boolean load() {
         if (!file.exists()) return false;
 
+        // temporary maps to avoid overwriting current state if something fails catastrophically
+        Map<String, Clan> tempClans = new HashMap<>();
+        Map<UUID, String> tempPlayerToClanName = new HashMap<>();
+
         try (Reader reader = new FileReader(file)) {
             Type type = new TypeToken<Map<String, Clan>>() {}.getType();
             Map<String, Clan> loaded = gson.fromJson(reader, type);
-
-            clans.clear();
-            playerToClanName.clear();
 
             if (loaded == null) return false;
 
@@ -153,6 +155,11 @@ public class ClanManager {
                     Clan readClan = entry.getValue();
                     if (readClan == null) {
                         logger.warn("Encountered null clan entry for key: {}", entry.getKey());
+                        continue;
+                    }
+
+                    if (readClan.leader() == null) {
+                        logger.warn("Clan {} has no leader. Skipping.", readClan.name());
                         continue;
                     }
 
@@ -166,32 +173,44 @@ public class ClanManager {
                                 continue;
                             }
 
-                            if (playerToClanName.containsKey(memberUUID)) {
-                                String existingClanName = playerToClanName.get(memberUUID);
-                                Clan existingClan = clans.get(existingClanName);
+                            if (tempPlayerToClanName.containsKey(memberUUID)) {
+                                String existingClanName = tempPlayerToClanName.get(memberUUID);
+                                Clan existingClan = tempClans.get(existingClanName);
 
                                 boolean isLeaderInExisting = existingClan != null && memberUUID.equals(existingClan.leader());
                                 boolean isLeaderInCurrent = memberUUID.equals(readClan.leader());
 
                                 if (isLeaderInExisting) {
                                     if (isLeaderInCurrent) {
-                                        logger.warn("Skipping clan {} because its leader {} is already leading another clan", adjustedClanName, memberUUID);
+                                        logger.warn(
+                                                "Skipping clan {} because its leader {} is already leading another clan",
+                                                adjustedClanName, memberUUID
+                                        );
                                         readClan = null;
                                         break;
                                     }
-                                    logger.warn("UUID {} is a leader in clan {}. Respecting first occurrence.", memberUUID, existingClanName);
+                                    logger.warn(
+                                            "UUID {} is a leader in clan {}. Respecting first occurrence.",
+                                            memberUUID, existingClanName
+                                    );
                                     continue;
                                 }
 
                                 if (isLeaderInCurrent) {
-                                    logger.warn("UUID {} is the leader of clan {}. Overriding previous clan {}.", memberUUID, adjustedClanName, existingClanName);
+                                    logger.warn(
+                                            "UUID {} is the leader of clan {}. Overriding previous clan {}.",
+                                            memberUUID, adjustedClanName, existingClanName
+                                    );
                                 } else {
-                                    logger.warn("UUID {} appears in multiple clans. Respecting first occurrence.", memberUUID);
+                                    logger.warn(
+                                            "UUID {} appears in multiple clans. Respecting first occurrence.",
+                                            memberUUID
+                                    );
                                     continue;
                                 }
                             }
 
-                            playerToClanName.put(memberUUID, adjustedClanName);
+                            tempPlayerToClanName.put(memberUUID, adjustedClanName);
                             cleanedMembers.add(memberUUID);
                         }
                     }
@@ -200,11 +219,16 @@ public class ClanManager {
                         // ensure the leader is always in the member list
                         if (!cleanedMembers.contains(readClan.leader())) {
                             cleanedMembers.add(readClan.leader());
-                            logger.info("Added leader {} to members of clan {}", readClan.leader(), adjustedClanName);
+                            logger.info(
+                                    "Added leader {} to members of clan {}",
+                                    readClan.leader(), adjustedClanName
+                            );
                         }
 
-                        Clan clan = new Clan(adjustedClanName, readClan.leader(), cleanedMembers, readClan.hexColor());
-                        clans.put(adjustedClanName, clan);
+                        Clan clan = new Clan(
+                                adjustedClanName, readClan.leader(), cleanedMembers, readClan.hexColor()
+                        );
+                        tempClans.put(adjustedClanName, clan);
                     }
 
                 } catch (Exception e) {
@@ -212,20 +236,33 @@ public class ClanManager {
                 }
             }
 
+            // Swap in temp maps only if parsing succeeded
+            clans.clear();
+            clans.putAll(tempClans);
+            playerToClanName.clear();
+            playerToClanName.putAll(tempPlayerToClanName);
+
+            ENABLE_SAVES = true;
+            return true;
+
         } catch (IOException e) {
             logger.error("Failed to read clans.json", e);
             return false;
-        } catch (JsonSyntaxException e) {
-            logger.error("Failed to parse clans.json. Was it manually edited incorrectly?", e);
-            return false;
-        } catch (Exception e) {
-            logger.error("Unexpected error loading clans.json", e);
+        } catch (JsonParseException e) {
+            logger.error(
+                    "Failed to parse clans.json. Was it manually edited incorrectly? Disabling writes to clans.json until this is resolved.",
+                    e
+            );
+            ENABLE_SAVES = false;
             return false;
         }
-        return true;
     }
 
     public void save() {
+        if (!ENABLE_SAVES) {
+            logger.warn("Attempted write to clans.json was prevented due to broken clans.json file.");
+            return;
+        }
         Path temp = null;
         try {
             Path target = file.toPath();
