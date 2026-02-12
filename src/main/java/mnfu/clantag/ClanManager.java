@@ -105,15 +105,21 @@ public class ClanManager {
         save();
     }
 
-    public void changeLeader(String clanName, UUID newLeaderUUID) {
+    /**
+     * tries to change the leader of a clan to a specified player
+     *
+     * @return false if player is not currently in the clan, true if success
+     */
+    public boolean transferLeader(String clanName, UUID newLeaderUUID) {
         String canonicalName = canonicalize(clanName);
         Clan clan = clans.get(canonicalName);
-        if (clan == null) return;
-        if (!clan.members().contains(newLeaderUUID)) return;
+        if (clan == null) return false; // could not find clan in memory or whatev
+        if (!clan.members().contains(newLeaderUUID)) return false;
 
         Clan updatedClan = new Clan(clan.name(), newLeaderUUID, clan.members(), clan.hexColor(), clan.isClosed());
         clans.put(canonicalName, updatedClan);
         save();
+        return true;
     }
 
     /**
