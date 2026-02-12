@@ -112,6 +112,7 @@ public class ClanTag implements ModInitializer {
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            ClanUuidCacheBuilder cacheBuilder = getInstance();
             if (cacheBuilder != null) {
                 cacheBuilder.shutdown();
             }
