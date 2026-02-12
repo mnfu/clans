@@ -4,25 +4,28 @@ import eu.pb4.placeholders.api.PlaceholderResult;
 import mnfu.clantag.commands.*;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import eu.pb4.placeholders.api.Placeholders;
 
 import java.io.File;
-import java.util.*;
+
+import static mnfu.clantag.ClanUuidCacheBuilder.getInstance;
+import static mnfu.clantag.ClanUuidCacheBuilder.init;
 
 public class ClanTag implements ModInitializer {
 
     public static final String MOD_ID = "ClanTag";
     public static final String FEEDBACK_PREFIX = "[ClanTag] ";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-    public static final Collection<String> colorNames = Formatting.getNames(true, false);
+
+    private ClanManager clanManager;
 
     @Override
     public void onInitialize() {
@@ -30,8 +33,9 @@ public class ClanTag implements ModInitializer {
 
         File file = new File("config/clans/clans.json");
         InviteManager inviteManager = new InviteManager();
-        ClanManager clanManager = new ClanManager(file, LOGGER, inviteManager);
+        clanManager = new ClanManager(file, LOGGER, inviteManager);
         LOGGER.info("Successfully loaded {} clan(s)", clanManager.clanCount());
+        registerLifecycleEvents();
 
         // cache players when they join, reducing any offline player lookups
         ServerPlayConnectionEvents.JOIN.register(((serverPlayNetworkHandler, packetSender, minecraftServer) -> {
@@ -72,7 +76,8 @@ public class ClanTag implements ModInitializer {
             var declineCommand = inviteCommand.buildDecline();
             var invitesCommand = inviteCommand.buildInvites();
 
-            var createCommand = new CreateCommand(clanManager, colorNames).build();
+            var createCommand = new CreateCommand(clanManager).build();
+            var disbandCommand = new DisbandCommand(clanManager).build();
             var kickCommand = new KickCommand(clanManager).build();
             var leaveCommand = new LeaveCommand(clanManager).build();
 
@@ -84,6 +89,7 @@ public class ClanTag implements ModInitializer {
                     .then(declineCommand)
                     .then(invitesCommand)
                     .then(createCommand)
+                    .then(disbandCommand)
                     .then(kickCommand)
                     .then(leaveCommand)
                     .executes(context -> {
@@ -91,6 +97,25 @@ public class ClanTag implements ModInitializer {
                         return 1;
                     })
             );
+        });
+    }
+
+    private void registerLifecycleEvents() {
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            if (!clanManager.loadedSuccessfully()) {
+                LOGGER.warn("Skipping UUID cache build due to failed load.");
+                return;
+            }
+
+            init(clanManager, server, LOGGER);
+            getInstance().start();
+        });
+
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            if (cacheBuilder != null) {
+                cacheBuilder.shutdown();
+            }
+            clanManager.save();
         });
     }
 }

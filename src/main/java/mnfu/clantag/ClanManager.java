@@ -24,13 +24,18 @@ public class ClanManager {
     private final Logger logger;
     private final InviteManager inviteManager;
     private static boolean ENABLE_SAVES = true;
+    private final boolean loadedSuccessfully;
 
     public ClanManager(File file, Logger logger, InviteManager inviteManager) {
         this.logger = logger;
         this.file = file;
         this.inviteManager = inviteManager;
         this.gson = new GsonBuilder().setPrettyPrinting().create();
-        load();
+        loadedSuccessfully = load();
+    }
+
+    public boolean loadedSuccessfully() {
+        return loadedSuccessfully;
     }
 
     /**
@@ -47,7 +52,7 @@ public class ClanManager {
         members.add(leaderUuid);
         hexColor = "#" + hexColor;
 
-        Clan clan = new Clan(clanName, leaderUuid, members, hexColor);
+        Clan clan = new Clan(clanName, leaderUuid, members, hexColor, true);
         clans.put(clanName, clan);
         playerToClanName.put(leaderUuid, clan.name());
         save();
@@ -80,7 +85,7 @@ public class ClanManager {
         if (members.contains(memberUuid)) return;
         members.add(memberUuid);
 
-        Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor());
+        Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor(), clan.isClosed());
         clans.put(clanName, updatedClan);
         playerToClanName.put(memberUuid, updatedClan.name());
         save();
@@ -94,7 +99,7 @@ public class ClanManager {
         LinkedHashSet<UUID> members = new LinkedHashSet<>(clan.members());
         members.remove(memberUUID);
 
-        Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor());
+        Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor(), clan.isClosed());
         clans.put(clanName, updatedClan);
         playerToClanName.remove(memberUUID);
         save();
@@ -105,7 +110,7 @@ public class ClanManager {
         if (clan == null) return;
         if (!clan.members().contains(newLeaderUUID)) return;
 
-        Clan updatedClan = new Clan(clan.name(), newLeaderUUID, clan.members(), clan.hexColor());
+        Clan updatedClan = new Clan(clan.name(), newLeaderUUID, clan.members(), clan.hexColor(), clan.isClosed());
         clans.put(clanName, updatedClan);
         save();
     }
@@ -226,7 +231,7 @@ public class ClanManager {
                         }
 
                         Clan clan = new Clan(
-                                adjustedClanName, readClan.leader(), cleanedMembers, readClan.hexColor()
+                                adjustedClanName, readClan.leader(), cleanedMembers, readClan.hexColor(), readClan.isClosed()
                         );
                         tempClans.put(adjustedClanName, clan);
                     }
