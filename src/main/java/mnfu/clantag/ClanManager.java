@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 
+import com.ibm.icu.lang.UCharacter;
 import mnfu.clantag.commands.InviteManager;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -14,12 +15,13 @@ import java.lang.reflect.Type;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.text.Normalizer;
 import java.util.*;
 
 public class ClanManager {
     private final File file;
     private final Gson gson;
-    private final Map<String, Clan> clans = new HashMap<>(); // key: clan name
+    private final Map<String, Clan> clans = new HashMap<>(); // key: canonical clan name
     private final Map<UUID, String> playerToClanName = new HashMap<>(); // key: player uuid
     private final Logger logger;
     private final InviteManager inviteManager;
@@ -44,16 +46,15 @@ public class ClanManager {
      * @return true if clan was created, false if clan was not created
      */
     public boolean createClan(String clanName, UUID leaderUuid, String hexColor) {
-        clanName = forceFirstCharUppercase(clanName);
-        if (clans.containsKey(clanName)) {
-            return false;
-        }
+        if (!isAlphabeticOnly(clanName)) return false;
+        String canonicalName = canonicalize(clanName);
+        if (clans.containsKey(canonicalName)) return false;
         LinkedHashSet<UUID> members = new LinkedHashSet<>();
         members.add(leaderUuid);
         hexColor = "#" + hexColor;
 
         Clan clan = new Clan(clanName, leaderUuid, members, hexColor, true);
-        clans.put(clanName, clan);
+        clans.put(canonicalName, clan);
         playerToClanName.put(leaderUuid, clan.name());
         save();
 
@@ -61,24 +62,23 @@ public class ClanManager {
         return true;
     }
 
-    public void deleteClan(String clanName) {
-        clanName = forceFirstCharUppercase(clanName);
-        if (clans.containsKey(clanName)) {
-            Clan clan = clans.get(clanName);
-            for (UUID memberUuid : clan.members()) {
-                playerToClanName.remove(memberUuid);
-            }
-            clans.remove(clanName);
-            save();
-            inviteManager.clearInvitesForClan(clanName);
+    public boolean deleteClan(String clanName) {
+        String canonicalName = canonicalize(clanName);
+        Clan clan = clans.get(canonicalName);
+        if (clan == null) return false;
+        for (UUID memberUuid : clan.members()) {
+            playerToClanName.remove(memberUuid);
         }
+        clans.remove(canonicalName);
+        save();
+        inviteManager.clearInvitesForClan(clanName);
+        return true;
     }
 
     public void addMember(String clanName, UUID memberUuid) {
-        clanName = forceFirstCharUppercase(clanName);
-        Clan clan = clans.get(clanName);
+        String canonicalName = canonicalize(clanName);
+        Clan clan = clans.get(canonicalName);
         if (clan == null) {
-            System.out.println("Clan not found!");
             return;
         }
         LinkedHashSet<UUID> members = new LinkedHashSet<>(clan.members());
@@ -86,7 +86,7 @@ public class ClanManager {
         members.add(memberUuid);
 
         Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor(), clan.isClosed());
-        clans.put(clanName, updatedClan);
+        clans.put(canonicalName, updatedClan);
         playerToClanName.put(memberUuid, updatedClan.name());
         save();
 
@@ -94,39 +94,39 @@ public class ClanManager {
     }
 
     public void removeMember(String clanName, UUID memberUUID) {
-        Clan clan = clans.get(clanName);
+        String canonicalName = canonicalize(clanName);
+        Clan clan = clans.get(canonicalName);
         if (clan == null) return;
         LinkedHashSet<UUID> members = new LinkedHashSet<>(clan.members());
         members.remove(memberUUID);
 
         Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor(), clan.isClosed());
-        clans.put(clanName, updatedClan);
+        clans.put(canonicalName, updatedClan);
         playerToClanName.remove(memberUUID);
         save();
     }
 
     public void changeLeader(String clanName, UUID newLeaderUUID) {
-        Clan clan = clans.get(clanName);
+        String canonicalName = canonicalize(clanName);
+        Clan clan = clans.get(canonicalName);
         if (clan == null) return;
         if (!clan.members().contains(newLeaderUUID)) return;
 
         Clan updatedClan = new Clan(clan.name(), newLeaderUUID, clan.members(), clan.hexColor(), clan.isClosed());
-        clans.put(clanName, updatedClan);
+        clans.put(canonicalName, updatedClan);
         save();
     }
 
     @Nullable
     public Clan getClan(String clanName) {
-        clanName = forceFirstCharUppercase(clanName);
-        if (clans.containsKey(clanName)) return clans.get(clanName);
-        return null;
+        return clans.get(canonicalize(clanName));
     }
 
     @Nullable
     public Clan getPlayerClan(UUID playerUUID) {
         String clanName = playerToClanName.get(playerUUID);
         if (clanName == null) return null;
-        return clans.get(clanName);
+        return getClan(clanName);
     }
 
     public boolean playerInAClan(UUID playerUUID) {
@@ -168,13 +168,14 @@ public class ClanManager {
                         continue;
                     }
 
-                    String adjustedClanName = forceFirstCharUppercase(readClan.name());
+                    String clanName = readClan.name();
+                    UUID leaderUuid = readClan.leader();
                     LinkedHashSet<UUID> cleanedMembers = new LinkedHashSet<>();
 
                     if (readClan.members() != null) {
                         for (UUID memberUUID : readClan.members()) {
                             if (memberUUID == null) {
-                                logger.warn("Null UUID found in clan {}. Skipping.", adjustedClanName);
+                                logger.warn("Null UUID found in clan {}. Skipping.", clanName);
                                 continue;
                             }
 
@@ -183,13 +184,13 @@ public class ClanManager {
                                 Clan existingClan = tempClans.get(existingClanName);
 
                                 boolean isLeaderInExisting = existingClan != null && memberUUID.equals(existingClan.leader());
-                                boolean isLeaderInCurrent = memberUUID.equals(readClan.leader());
+                                boolean isLeaderInCurrent = memberUUID.equals(leaderUuid);
 
                                 if (isLeaderInExisting) {
                                     if (isLeaderInCurrent) {
                                         logger.warn(
                                                 "Skipping clan {} because its leader {} is already leading another clan",
-                                                adjustedClanName, memberUUID
+                                                clanName, memberUUID
                                         );
                                         readClan = null;
                                         break;
@@ -204,7 +205,7 @@ public class ClanManager {
                                 if (isLeaderInCurrent) {
                                     logger.warn(
                                             "UUID {} is the leader of clan {}. Overriding previous clan {}.",
-                                            memberUUID, adjustedClanName, existingClanName
+                                            memberUUID, clanName, existingClanName
                                     );
                                 } else {
                                     logger.warn(
@@ -215,25 +216,26 @@ public class ClanManager {
                                 }
                             }
 
-                            tempPlayerToClanName.put(memberUUID, adjustedClanName);
+                            tempPlayerToClanName.put(memberUUID, clanName);
                             cleanedMembers.add(memberUUID);
                         }
                     }
 
                     if (readClan != null) {
                         // ensure the leader is always in the member list
-                        if (!cleanedMembers.contains(readClan.leader())) {
-                            cleanedMembers.add(readClan.leader());
+
+                        if (!cleanedMembers.contains(leaderUuid)) {
+                            cleanedMembers.add(leaderUuid);
                             logger.info(
                                     "Added leader {} to members of clan {}",
-                                    readClan.leader(), adjustedClanName
+                                    leaderUuid, clanName
                             );
                         }
 
                         Clan clan = new Clan(
-                                adjustedClanName, readClan.leader(), cleanedMembers, readClan.hexColor(), readClan.isClosed()
+                                clanName, leaderUuid, cleanedMembers, readClan.hexColor(), readClan.isClosed()
                         );
-                        tempClans.put(adjustedClanName, clan);
+                        tempClans.put(canonicalize(clanName), clan);
                     }
 
                 } catch (Exception e) {
@@ -301,7 +303,18 @@ public class ClanManager {
         }
     }
 
-    private String forceFirstCharUppercase(String str) {
-        return Character.toUpperCase(str.charAt(0)) + str.substring(1);
+    private static String canonicalize(String input) {
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFKD);
+        normalized = normalized.replaceAll("\\p{M}", "");
+        return UCharacter.foldCase(normalized, true);
+    }
+
+    private static boolean isAlphabeticOnly(String input) {
+        for (int i = 0; i < input.length(); ) {
+            int cp = input.codePointAt(i);
+            if (!UCharacter.isUAlphabetic(cp)) return false;
+            i += Character.charCount(cp);
+        }
+        return true;
     }
 }

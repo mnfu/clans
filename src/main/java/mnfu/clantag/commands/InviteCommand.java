@@ -36,7 +36,7 @@ public class InviteCommand {
 
     public LiteralArgumentBuilder<ServerCommandSource> buildAccept() {
         return CommandManager.literal("accept")
-                .then(CommandManager.argument("clanName", StringArgumentType.word())
+                .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                         .suggests((context, suggestionsBuilder) -> {
                             ServerPlayerEntity player = context.getSource().getPlayer();
                             if (player != null) {
@@ -52,7 +52,7 @@ public class InviteCommand {
 
     public LiteralArgumentBuilder<ServerCommandSource> buildDecline() {
         return CommandManager.literal("decline")
-                .then(CommandManager.argument("clanName", StringArgumentType.word())
+                .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                         .suggests((context, suggestionsBuilder) -> {
                             ServerPlayerEntity player = context.getSource().getPlayer();
                             if (player != null) {

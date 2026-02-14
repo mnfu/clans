@@ -1,5 +1,6 @@
 package mnfu.clantag;
 
+import com.ibm.icu.lang.UCharacter;
 import eu.pb4.placeholders.api.PlaceholderResult;
 import mnfu.clantag.commands.*;
 import net.fabricmc.api.ModInitializer;
@@ -15,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import eu.pb4.placeholders.api.Placeholders;
 
 import java.io.File;
+import java.text.Normalizer;
 
 import static mnfu.clantag.ClanUuidCacheBuilder.getInstance;
 import static mnfu.clantag.ClanUuidCacheBuilder.init;
@@ -118,5 +120,12 @@ public class ClanTag implements ModInitializer {
             }
             clanManager.save();
         });
+    }
+
+    public static void main(String[] args) {
+        String input = "ËxÄmPlE";
+
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFKC);
+        System.out.println(UCharacter.foldCase(normalized, true));
     }
 }

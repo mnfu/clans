@@ -32,7 +32,7 @@ public class InfoCommand {
     public LiteralArgumentBuilder<ServerCommandSource> build() {
         return CommandManager.literal("info")
                 .executes(this::executeForSelf)
-                .then(CommandManager.argument("clanName", StringArgumentType.word())
+                .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                         .suggests((commandContext, suggestionsBuilder) -> {
                             Collection<Clan> clans = clanManager.getAllClans();
                             for (Clan c : clans) {
