@@ -35,7 +35,10 @@ public final class CommandUtils {
             if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
         }
 
-        return MojangApi.getUsername(uuid);
+        return MojangApi.getUsername(uuid).thenApply(opt -> {
+            opt.ifPresent(name -> { if (cache != null) cache.updateIfChanged(uuid, name); });
+            return opt;
+        });
     }
 
     /**
@@ -55,7 +58,10 @@ public final class CommandUtils {
             if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
         }
 
-        return MojangApi.getUuid(playerName);
+        return MojangApi.getUuid(playerName).thenApply(opt -> {
+            opt.ifPresent(uuid -> { if (cache != null) cache.updateIfChanged(uuid, playerName); });
+            return opt;
+        });
     }
 
     /**
@@ -73,7 +79,10 @@ public final class CommandUtils {
             if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
         }
 
-        return MojangApi.getUsername(uuid);
+        return MojangApi.getUsername(uuid).thenApply(opt -> {
+            opt.ifPresent(name -> { if (cache != null) cache.updateIfChanged(uuid, name); });
+            return opt;
+        });
     }
 
     /**
@@ -91,7 +100,10 @@ public final class CommandUtils {
             if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
         }
 
-        return MojangApi.getUuid(playerName);
+        return MojangApi.getUuid(playerName).thenApply(opt -> {
+            opt.ifPresent(uuid -> { if (cache != null) cache.updateIfChanged(uuid, playerName); });
+            return opt;
+        });
     }
 
     public static Text getColoredClanName(Clan clan) {
