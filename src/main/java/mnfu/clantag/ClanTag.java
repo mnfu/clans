@@ -1,6 +1,5 @@
 package mnfu.clantag;
 
-import com.ibm.icu.lang.UCharacter;
 import eu.pb4.placeholders.api.PlaceholderResult;
 import mnfu.clantag.commands.*;
 import net.fabricmc.api.ModInitializer;
@@ -16,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import eu.pb4.placeholders.api.Placeholders;
 
 import java.io.File;
-import java.text.Normalizer;
 
 import static mnfu.clantag.ClanUuidCacheBuilder.getInstance;
 import static mnfu.clantag.ClanUuidCacheBuilder.init;
@@ -82,9 +80,11 @@ public class ClanTag implements ModInitializer {
             var disbandCommand = new DisbandCommand(clanManager).build();
             var kickCommand = new KickCommand(clanManager).build();
             var leaveCommand = new LeaveCommand(clanManager).build();
+            var modifyCommand = new ModifyCommand(clanManager).build();
 
             dispatcher.register(baseCommand
                     .then(adminCommand)
+                    .then(modifyCommand)
                     .then(infoCommand)
                     .then(inviteSubcommand)
                     .then(acceptCommand)
@@ -95,7 +95,7 @@ public class ClanTag implements ModInitializer {
                     .then(kickCommand)
                     .then(leaveCommand)
                     .executes(context -> {
-                        context.getSource().sendFeedback(()->Text.literal(FEEDBACK_PREFIX + "valid subcommands: reload"), false);
+                        context.getSource().sendFeedback(()->Text.literal("Command help message not implemented, WIP!"), false);
                         return 1;
                     })
             );
@@ -120,12 +120,5 @@ public class ClanTag implements ModInitializer {
             }
             clanManager.save();
         });
-    }
-
-    public static void main(String[] args) {
-        String input = "ËxÄmPlE";
-
-        String normalized = Normalizer.normalize(input, Normalizer.Form.NFKC);
-        System.out.println(UCharacter.foldCase(normalized, true));
     }
 }

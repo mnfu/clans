@@ -45,15 +45,15 @@ public class ClanManager {
      *
      * @return true if clan was created, false if clan was not created
      */
-    public boolean createClan(String clanName, UUID leaderUuid, String hexColor) {
+    public boolean createClan(String clanName, UUID leaderUuid) {
         if (!isAlphabeticOnly(clanName)) return false;
         String canonicalName = canonicalize(clanName);
+        if (isABannedName(canonicalName)) return false;
         if (clans.containsKey(canonicalName)) return false;
         LinkedHashSet<UUID> members = new LinkedHashSet<>();
         members.add(leaderUuid);
-        hexColor = "#" + hexColor;
 
-        Clan clan = new Clan(clanName, leaderUuid, members, hexColor, true);
+        Clan clan = new Clan(clanName, leaderUuid, members, "#FFFFFF", true);
         clans.put(canonicalName, clan);
         playerToClanName.put(leaderUuid, clan.name());
         save();
@@ -115,6 +115,23 @@ public class ClanManager {
         Clan updatedClan = new Clan(clan.name(), newLeaderUUID, clan.members(), clan.hexColor(), clan.isClosed());
         clans.put(canonicalName, updatedClan);
         save();
+    }
+
+    /**
+     *
+     * @param clanName name of the clan to change the color of
+     * @param hexColor the hex code of some color
+     * @return true if successfully changed color, false if failed
+     */
+    public boolean changeColor(String clanName, String hexColor) {
+        if (hexColor.charAt(0) != '#') hexColor = "#" + hexColor;
+        String canonicalName = canonicalize(clanName);
+        Clan clan = clans.get(canonicalName);
+        if (clan == null) return false;
+        Clan updatedClan = new Clan(clan.name(), clan.leader(), clan.members(), hexColor, clan.isClosed());
+        clans.put(canonicalName, updatedClan);
+        save();
+        return true;
     }
 
     @Nullable
@@ -316,5 +333,10 @@ public class ClanManager {
             i += Character.charCount(cp);
         }
         return true;
+    }
+
+    private static boolean isABannedName(String canonicalName) {
+        //PLACEHOLDER. This will eventually be checking data loaded in from a file.
+        return canonicalName.equals("avience");
     }
 }
