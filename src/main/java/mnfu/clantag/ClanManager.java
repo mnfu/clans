@@ -5,7 +5,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 
-import com.ibm.icu.lang.UCharacter;
 import mnfu.clantag.commands.InviteManager;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -46,7 +45,7 @@ public class ClanManager {
      * @return true if clan was created, false if clan was not created
      */
     public boolean createClan(String clanName, UUID leaderUuid) {
-        if (!isAlphabeticOnly(clanName)) return false;
+        if (!containsAllowedChars(clanName)) return false;
         String canonicalName = canonicalize(clanName);
         if (isABannedName(canonicalName)) return false;
         if (clans.containsKey(canonicalName)) return false;
@@ -323,13 +322,19 @@ public class ClanManager {
     private static String canonicalize(String input) {
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFKD);
         normalized = normalized.replaceAll("\\p{M}", "");
-        return UCharacter.foldCase(normalized, true);
+        return normalized.toLowerCase(Locale.ROOT);
     }
 
-    private static boolean isAlphabeticOnly(String input) {
+    private static boolean containsAllowedChars(String input) {
+        if (input == null || input.isBlank()) return false;
+
         for (int i = 0; i < input.length(); ) {
             int cp = input.codePointAt(i);
-            if (!UCharacter.isUAlphabetic(cp)) return false;
+            boolean isLetter = Character.isAlphabetic(cp);
+            boolean isLatin = Character.UnicodeScript.of(cp) == Character.UnicodeScript.LATIN;
+            if (!(isLetter && isLatin)) {
+                return false;
+            }
             i += Character.charCount(cp);
         }
         return true;
