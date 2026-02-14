@@ -3,6 +3,8 @@ package mnfu.clantag.commands;
 import com.mojang.brigadier.context.CommandContext;
 import mnfu.clantag.Clan;
 import mnfu.clantag.MojangApi;
+import mnfu.clantag.PersistentPlayerCache;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Style;
@@ -25,10 +27,14 @@ public final class CommandUtils {
         ServerPlayerEntity player = context.getSource().getServer()
                 .getPlayerManager()
                 .getPlayer(uuid);
+        if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getName().getString()));
 
-        if (player != null) {
-            return CompletableFuture.completedFuture(Optional.of(player.getName().getString()));
+        PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
+        if (cache != null) {
+            Optional<String> cached = cache.getUsername(uuid);
+            if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
         }
+
         return MojangApi.getUsername(uuid);
     }
 
@@ -41,10 +47,14 @@ public final class CommandUtils {
         ServerPlayerEntity player = context.getSource().getServer()
                 .getPlayerManager()
                 .getPlayer(playerName);
+        if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getUuid()));
 
-        if (player != null) {
-            return CompletableFuture.completedFuture(Optional.of(player.getUuid()));
+        PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
+        if (cache != null) {
+            Optional<UUID> cached = cache.getUuid(playerName);
+            if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
         }
+
         return MojangApi.getUuid(playerName);
     }
 
@@ -53,17 +63,16 @@ public final class CommandUtils {
      *
      * @return an {@link Optional} containing the player's name if found, otherwise {@link Optional#empty()}
      */
-    public static CompletableFuture<Optional<String>> getPlayerName(
-            net.minecraft.server.MinecraftServer server,
-            UUID uuid
-    ) {
-        ServerPlayerEntity player = server
-                .getPlayerManager()
-                .getPlayer(uuid);
+    public static CompletableFuture<Optional<String>> getPlayerName(MinecraftServer server, UUID uuid) {
+        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+        if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getName().getString()));
 
-        if (player != null) {
-            return CompletableFuture.completedFuture(Optional.of(player.getName().getString()));
+        PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
+        if (cache != null) {
+            Optional<String> cached = cache.getUsername(uuid);
+            if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
         }
+
         return MojangApi.getUsername(uuid);
     }
 
@@ -72,17 +81,16 @@ public final class CommandUtils {
      *
      * @return an {@link Optional} containing the UUID if found, otherwise {@link Optional#empty()}
      */
-    public static CompletableFuture<Optional<UUID>> getUuid(
-            net.minecraft.server.MinecraftServer server,
-            String playerName
-    ) {
-        ServerPlayerEntity player = server
-                .getPlayerManager()
-                .getPlayer(playerName);
+    public static CompletableFuture<Optional<UUID>> getUuid(MinecraftServer server, String playerName) {
+        ServerPlayerEntity player = server.getPlayerManager().getPlayer(playerName);
+        if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getUuid()));
 
-        if (player != null) {
-            return CompletableFuture.completedFuture(Optional.of(player.getUuid()));
+        PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
+        if (cache != null) {
+            Optional<UUID> cached = cache.getUuid(playerName);
+            if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
         }
+
         return MojangApi.getUuid(playerName);
     }
 

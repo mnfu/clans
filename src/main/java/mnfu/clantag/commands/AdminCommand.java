@@ -5,7 +5,6 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
-import mnfu.clantag.ClanUuidCacheBuilder;
 import mnfu.clantag.MojangApi;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
@@ -121,29 +120,8 @@ public class AdminCommand {
                         .then(CommandManager.literal("clear")
                                 .executes(context -> {
                                     MojangApi.clearCache();
-                                    ClanUuidCacheBuilder builder = ClanUuidCacheBuilder.getInstance();
-                                    if (builder != null) {
-                                        builder.shutdown();
-                                    }
                                     context.getSource().sendFeedback(
-                                            () -> Text.literal("Offline player cache cleared!"), true
-                                    );
-                                    return 1;
-                                })
-                        )
-                        .then(CommandManager.literal("build")
-                                .executes(context -> {
-                                    ClanUuidCacheBuilder builder = ClanUuidCacheBuilder.getInstance();
-                                    if (builder == null) {
-                                        context.getSource().sendError(Text.literal(
-                                                "Clan UUID cache builder has not been initialized yet!"
-                                        ));
-                                        return 0;
-                                    }
-                                    builder.start();
-                                    context.getSource().sendFeedback(
-                                            () -> Text.literal("Started building the clan UUID cache!"),
-                                            true
+                                            () -> Text.literal("MojangAPI player cache cleared!"), true
                                     );
                                     return 1;
                                 })
@@ -152,7 +130,7 @@ public class AdminCommand {
 
                 // default response
                 .executes(context -> {
-                    context.getSource().sendError(Text.literal("Valid subcommands: add, remove, transfer, disband"));
+                    context.getSource().sendError(Text.literal("Valid subcommands: add, remove, transfer, disband, cache, reload"));
                     return 0;
                 });
 
