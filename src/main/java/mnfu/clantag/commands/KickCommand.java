@@ -68,6 +68,11 @@ public class KickCommand {
 
                                         UUID targetUuid = optUuid.get();
 
+                                        if (!playerClan.members().contains(targetUuid)) {
+                                            context.getSource().sendError(Text.literal(targetName + " is not in clan " + playerClan.name() + "!"));
+                                            return;
+                                        }
+
                                         // kicking self logic
                                         if (targetUuid.equals(executorUuid)) {
                                             if (playerClan.members().size() == 1) {
