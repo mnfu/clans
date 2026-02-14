@@ -33,12 +33,12 @@ public class InfoCommand {
         return CommandManager.literal("info")
                 .executes(this::executeForSelf)
                 .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
-                        .suggests((commandContext, suggestionsBuilder) -> {
+                        .suggests((context, builder) -> {
                             Collection<Clan> clans = clanManager.getAllClans();
                             for (Clan c : clans) {
-                                suggestionsBuilder.suggest(c.name());
+                                builder.suggest(c.name());
                             }
-                            return suggestionsBuilder.buildFuture();
+                            return builder.buildFuture();
                         })
                         .executes(this::executeForClanName));
     }

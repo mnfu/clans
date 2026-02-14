@@ -16,8 +16,10 @@ import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 
+import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class InviteCommand {
     private final ClanManager clanManager;
@@ -31,6 +33,11 @@ public class InviteCommand {
     public LiteralArgumentBuilder<ServerCommandSource> buildInvite() {
         return CommandManager.literal("invite")
                 .then(CommandManager.argument("playerName", StringArgumentType.word())
+                        .suggests((context, builder) -> {
+                            Collection<String> onlinePlayers = context.getSource().getPlayerNames();
+                            onlinePlayers.forEach(builder::suggest);
+                            return builder.buildFuture();
+                        })
                         .executes(this::executeInvite));
     }
 
