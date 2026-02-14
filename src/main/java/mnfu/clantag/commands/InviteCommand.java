@@ -19,7 +19,6 @@ import net.minecraft.util.Formatting;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 public class InviteCommand {
     private final ClanManager clanManager;

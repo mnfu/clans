@@ -69,6 +69,27 @@ public class AdminCommand {
                         )
                 )
 
+                // transfer <playerName> <clanName>
+                .then(CommandManager.literal("transfer")
+                        .then(CommandManager.argument("playerName", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    for (String n : context.getSource().getServer().getPlayerNames()) {
+                                        builder.suggest(n);
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
+                                        .suggests((context, builder) -> {
+                                            for (Clan c : clanManager.getAllClans()) {
+                                                builder.suggest(c.name());
+                                            }
+                                            return builder.buildFuture();
+                                        })
+                                        .executes(this::executeTransfer)
+                                )
+                        )
+                )
+
                 // delete <clanName> (confirm)
                 .then(CommandManager.literal("delete")
                         .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
@@ -207,6 +228,49 @@ public class AdminCommand {
             clanManager.removeMember(clanName, playerUuid);
             context.getSource().sendFeedback(() -> Text.literal("Removed " + playerName + " from clan " + clanName + "!"), true);
         }));
+
+        return 1;
+    }
+
+    private int executeTransfer(CommandContext<ServerCommandSource> context) {
+        String playerName = StringArgumentType.getString(context, "playerName");
+        String clanName = StringArgumentType.getString(context, "clanName");
+
+        if (playerName == null || clanName == null) {
+            context.getSource().sendError(Text.literal("Usage: /clan admin transfer <playerName> <clanName>"));
+            return 0;
+        }
+
+        Clan clan = clanManager.getClan(clanName);
+        if (clan == null) {
+            context.getSource().sendError(Text.literal("Clan not found!"));
+            return 0;
+        }
+
+        getUuid(context, playerName).thenAccept(optUuid ->
+                context.getSource().getServer().execute(() -> {
+                    if (optUuid.isEmpty()) {
+                        context.getSource().sendError(Text.literal("Player not found!"));
+                        return;
+                    }
+
+                    UUID targetUuid = optUuid.get();
+
+                    if (targetUuid.equals(clan.leader())) {
+                        context.getSource().sendError(Text.literal(playerName + " is already the leader of " + clanName + "!"));
+                        return;
+                    }
+
+                    boolean success = clanManager.transferLeader(clanName, targetUuid);
+                    if (!success) {
+                        context.getSource().sendError(Text.literal(playerName + " is not in " + clanName + "!"));
+                        return;
+                    }
+
+                    context.getSource().sendFeedback(() -> Text.literal(
+                            "Successfully transferred leadership of " + clanName + " to " + playerName + "!"), true);
+                })
+        );
 
         return 1;
     }

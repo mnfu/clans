@@ -6,6 +6,13 @@
 - [ ] Decide what to do when a leader tries to remove themselves, it could be funny to outright delete the clan in this scenario, but it should probably just fail. They should be required to run /c delete or something.
 - [ ] Implement the clan transfer command, it has backend support already in ClanManager.java
 - [ ] Prevent players from joining multiple clans, and from creating clans while they're in a clan
+- [ ] add a kick message functionality: "you have been kicked from clan ___" and "you ahve been kicked from clan ___ for reason: ___"
+- [ ] add ability for clans to be open or closed (closed by default)
+- [ ] add restricting players from clans like a mini ban list, more useful to open clans
+- [ ] add restrict message: "you have been restricted from clan ___" and "you ahve been restricted from clan ___ for reason: ___"
+- [ ] banned words list for clan creation (get dallas)
+- [ ] display if clan is open or closed in info
+- [ ] make /transfer, /invite, etc. only visible to clan leaders 
 
 
 # Planned Commands
