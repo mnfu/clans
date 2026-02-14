@@ -42,7 +42,7 @@ public class DisbandCommand {
             return 0;
         }
 
-        if (clan.leader() != executorUuid) {
+        if (!clan.leader().equals(executorUuid)) {
             context.getSource().sendError(Text.literal(
                     "You must be a clan leader to disband a clan!"
             ));

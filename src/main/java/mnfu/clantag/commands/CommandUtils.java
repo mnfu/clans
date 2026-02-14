@@ -1,9 +1,13 @@
 package mnfu.clantag.commands;
 
 import com.mojang.brigadier.context.CommandContext;
+import mnfu.clantag.Clan;
 import mnfu.clantag.MojangApi;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.text.TextColor;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -80,5 +84,11 @@ public final class CommandUtils {
             return CompletableFuture.completedFuture(Optional.of(player.getUuid()));
         }
         return MojangApi.getUuid(playerName);
+    }
+
+    public static Text getColoredClanName(Clan clan) {
+        TextColor textColor = TextColor.parse(clan.hexColor()).getOrThrow();
+        return Text.literal(clan.name())
+                .setStyle(Style.EMPTY.withColor(textColor));
     }
 }
