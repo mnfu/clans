@@ -2,6 +2,9 @@ package mnfu.clantag;
 
 import org.slf4j.Logger;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.*;
 import java.util.Map;
 import java.util.Optional;
@@ -31,7 +34,9 @@ public class PersistentPlayerCache {
         this.logger = logger;
         try {
             Class.forName("org.sqlite.JDBC");
-            connection = DriverManager.getConnection("jdbc:sqlite:config/clans/player_cache.db");
+            Path dbPath = Path.of("config/clans/player_cache.db");
+            Files.createDirectories(dbPath.getParent());
+            connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute("""
                         CREATE TABLE IF NOT EXISTS player_names (
@@ -45,6 +50,8 @@ public class PersistentPlayerCache {
             logger.error("Failed to initialize persistent player cache", e);
         } catch (ClassNotFoundException e) {
             logger.error("SQLite JDBC driver not found, not included in jar?", e);
+        } catch (IOException e) {
+            logger.error("Failed to create config/clans directory", e);
         }
     }
 
