@@ -16,8 +16,6 @@ import eu.pb4.placeholders.api.Placeholders;
 
 import java.io.File;
 
-import static mnfu.clantag.ClanUuidCacheBuilder.getInstance;
-import static mnfu.clantag.ClanUuidCacheBuilder.init;
 
 public class ClanTag implements ModInitializer {
 
@@ -37,10 +35,20 @@ public class ClanTag implements ModInitializer {
         LOGGER.info("Successfully loaded {} clan(s)", clanManager.clanCount());
         registerLifecycleEvents();
 
+        PersistentPlayerCache.init(LOGGER);
+
         // cache players when they join, reducing any offline player lookups
         ServerPlayConnectionEvents.JOIN.register(((serverPlayNetworkHandler, packetSender, minecraftServer) -> {
             ServerPlayerEntity player = serverPlayNetworkHandler.getPlayer();
             MojangApi.cachePlayer(player);
+
+            PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
+            if (cache != null) {
+                boolean updated = cache.updateIfChanged(player.getUuid(), player.getName().getString());
+                if (updated) {
+                    LOGGER.debug("Updated persistent cache for {} ({})", player.getName().getString(), player.getUuid());
+                }
+            }
         }));
 
         // register placeholders
@@ -105,20 +113,10 @@ public class ClanTag implements ModInitializer {
     }
 
     private void registerLifecycleEvents() {
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            if (!clanManager.loadedSuccessfully()) {
-                LOGGER.warn("Skipping UUID cache build due to failed load.");
-                return;
-            }
-
-            init(clanManager, server, LOGGER);
-            getInstance().start();
-        });
-
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-            ClanUuidCacheBuilder cacheBuilder = getInstance();
-            if (cacheBuilder != null) {
-                cacheBuilder.shutdown();
+            PersistentPlayerCache persistentCache = PersistentPlayerCache.getInstance();
+            if (persistentCache != null) {
+                persistentCache.close();
             }
             clanManager.save();
         });
