@@ -51,16 +51,23 @@ public class DisbandCommand {
 
         if (!confirm) {
             context.getSource().sendMessage(Text.literal(
-                    "Are you sure you want to do this? This action cannot be undone. If so, run: /clan disband confirm"
+                    "Are you sure you want to do this? If so, run: /clan disband confirm"
             ));
             return 1;
         }
 
         // now we know they're the leader of their clan, and they've confirmed.
-        clanManager.deleteClan(clan.name());
-        context.getSource().sendMessage(Text.literal(
-                "Clan " + clan.name() + " has been disbanded."
-        ));
+        boolean success = clanManager.deleteClan(clan.name());
+        if (success) {
+            context.getSource().sendMessage(Text.literal(
+                    "Clan " + clan.name() + " has been disbanded."
+            ));
+        } else {
+            context.getSource().sendMessage(Text.literal(
+                    "Clan " + clan.name() + " does not exist."
+            ));
+        }
+
         return 1;
     }
 }

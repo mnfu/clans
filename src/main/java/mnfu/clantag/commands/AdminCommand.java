@@ -36,7 +36,7 @@ public class AdminCommand {
                                     }
                                     return builder.buildFuture();
                                 })
-                                .then(CommandManager.argument("clanName", StringArgumentType.word())
+                                .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                                         .suggests((context, builder) -> {
                                             for (Clan c : clanManager.getAllClans()) {
                                                 builder.suggest(c.name());
@@ -57,7 +57,7 @@ public class AdminCommand {
                                     }
                                     return builder.buildFuture();
                                 })
-                                .then(CommandManager.argument("clanName", StringArgumentType.word())
+                                .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                                         .suggests((context, builder) -> {
                                             for (Clan c : clanManager.getAllClans()) {
                                                 builder.suggest(c.name());
@@ -71,17 +71,14 @@ public class AdminCommand {
 
                 // delete <clanName> (confirm)
                 .then(CommandManager.literal("delete")
-                        .then(CommandManager.argument("clanName", StringArgumentType.word())
+                        .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                                 .suggests((context, builder) -> {
                                     for (Clan c : clanManager.getAllClans()) {
                                         builder.suggest(c.name());
                                     }
                                     return builder.buildFuture();
                                 })
-                                .then(CommandManager.literal("confirm")
-                                        .executes(context -> executeDelete(context, true))
-                                )
-                                .executes(context -> executeDelete(context, false))
+                                .executes(this::executeDelete)
                         )
                 )
 
@@ -214,20 +211,19 @@ public class AdminCommand {
         return 1;
     }
 
-    private int executeDelete(CommandContext<ServerCommandSource> context, boolean confirm) {
-        if (!confirm) {
-            context.getSource().sendMessage(Text.literal(
-                    "Are you sure you want to do this? This action cannot be undone. If so, run: /clan disband confirm"
-            ));
-            return 1;
-        }
+    private int executeDelete(CommandContext<ServerCommandSource> context) {
         String clanName = StringArgumentType.getString(context, "clanName");
         if (clanName == null) {
             context.getSource().sendError(Text.literal("Clan not found!"));
             return 0;
         }
-        clanManager.deleteClan(clanName);
-        context.getSource().sendFeedback(() -> Text.literal("Deleted " + clanName + "!"), true);
-        return 1;
+        boolean successful = clanManager.deleteClan(clanName);
+        if (successful) {
+            context.getSource().sendFeedback(() -> Text.literal("Deleted clan " + clanName + "!"), true);
+            return 1;
+        } else {
+            context.getSource().sendError(Text.literal("Clan not found!"));
+            return 0;
+        }
     }
 }

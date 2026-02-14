@@ -26,7 +26,7 @@ public class CreateCommand {
 
     public LiteralArgumentBuilder<ServerCommandSource> build() {
         return CommandManager.literal("create")
-                .then(CommandManager.argument("clanName", StringArgumentType.word())
+                .then(CommandManager.argument("clanName", StringArgumentType.string())
                         .then(CommandManager.argument("hexColor", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     for (String c : colorNames) {
@@ -78,7 +78,7 @@ public class CreateCommand {
         if (clanCreated) {
             executor.sendMessage(Text.literal("Clan " + clanName + " created!"), false);
         } else {
-            context.getSource().sendError(Text.literal("Clan " + clanName + " already exists!"));
+            context.getSource().sendError(Text.literal("Clan " + clanName + " already exists, or " + clanName + " isn't an allowed name!"));
         }
 
         return 1;
