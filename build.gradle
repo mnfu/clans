@@ -49,6 +49,7 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     modImplementation "eu.pb4:placeholder-api:${project.placeholder_api_version}"
     implementation("org.xerial:sqlite-jdbc:${project.sqlite_jdbc_version}")
+    include("org.xerial:sqlite-jdbc:${project.sqlite_jdbc_version}")
 }
 
 processResources {

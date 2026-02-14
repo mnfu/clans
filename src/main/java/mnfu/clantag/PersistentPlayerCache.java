@@ -30,6 +30,7 @@ public class PersistentPlayerCache {
     private PersistentPlayerCache(Logger logger) {
         this.logger = logger;
         try {
+            Class.forName("org.sqlite.JDBC");
             connection = DriverManager.getConnection("jdbc:sqlite:config/clans/player_cache.db");
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute("""
@@ -42,6 +43,8 @@ public class PersistentPlayerCache {
             loadIntoMemory();
         } catch (SQLException e) {
             logger.error("Failed to initialize persistent player cache", e);
+        } catch (ClassNotFoundException e) {
+            logger.error("SQLite JDBC driver not found, not included in jar?", e);
         }
     }
 
