@@ -42,6 +42,8 @@ Currently the default value is not configurable, as this was made for a specific
 
 `/clan modify color <colorName/hexCode>` - changes the color code of your clan.
 
+`/clan transfer <playerName>` - transfers clan ownership to player if they are a member of your clan.
+
 ### Admin Commands - Currently restricted to level 4 operators / console
 
 `/clan admin` - base admin command.
