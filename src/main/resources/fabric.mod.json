@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "ClanTag",
   "description": "",
-  "authors": [],
+  "authors": ["mnfu","carmabound"],
   "contact": {},
   "license": "All-Rights-Reserved",
   "icon": "assets/clantag/icon.png",
