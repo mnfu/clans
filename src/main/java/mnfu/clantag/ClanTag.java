@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,7 @@ public class ClanTag implements ModInitializer {
                 (ctx, arg) -> {
                     if (!ctx.hasPlayer() || ctx.player() == null) return PlaceholderResult.invalid();
                     Clan clan = clanManager.getPlayerClan(ctx.player().getUuid());
-                    if (clan == null) return PlaceholderResult.value(Text.literal("Avience"));
+                    if (clan == null) return PlaceholderResult.value(Text.literal("Avience").formatted(Formatting.GRAY));
                     return PlaceholderResult.value(Text.literal(clan.name()).withColor(Integer.parseInt(clan.hexColor().substring(1), 16)));
                 }
         );

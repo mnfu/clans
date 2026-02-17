@@ -41,7 +41,7 @@ public class ModifyCommand {
 
                 // color <newColorNameOrHex>
                 .then(CommandManager.literal("color")
-                        .then(CommandManager.argument("newColorNameOrHex", StringArgumentType.word())
+                        .then(CommandManager.argument("newColorNameOrHex", StringArgumentType.greedyString())
                                 .suggests((context, builder) -> {
                                     for (String c : colorNames) {
                                         builder.suggest(c);
@@ -68,13 +68,13 @@ public class ModifyCommand {
 
         String newColor = StringArgumentType.getString(context, "newColorNameOrHex");
 
-        if (newColor == null) return 0;
+        if (newColor == null || newColor.isEmpty()) return 0;
         // try to interpret as formatting name first
         Formatting formatting = Formatting.byName(newColor);
         if (formatting != null && formatting.isColor()) {
             newColor = "#" + Integer.toHexString(formatting.getColorValue()).toUpperCase(Locale.ROOT);
-        } else if (newColor.matches("(?i)^[0-9a-f]{1,6}$")) {
-            newColor = "#" + newColor.toUpperCase(Locale.ROOT);
+        } else if (newColor.matches("(?i)^#?[0-9a-f]{1,6}$")) {
+            newColor = "#" + newColor.replaceFirst("^#", "").toUpperCase(Locale.ROOT);
         } else {
             context.getSource().sendError(Text.literal(newColor + " is not a valid hex color or minecraft color."));
             return 0;
