@@ -24,21 +24,7 @@ public final class CommandUtils {
      * @return an {@link Optional} containing the player's name if found, otherwise {@link Optional#empty()}
      */
     public static CompletableFuture<Optional<String>> getPlayerName(CommandContext<ServerCommandSource> context, UUID uuid) {
-        ServerPlayerEntity player = context.getSource().getServer()
-                .getPlayerManager()
-                .getPlayer(uuid);
-        if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getName().getString()));
-
-        PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
-        if (cache != null) {
-            Optional<String> cached = cache.getUsername(uuid);
-            if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
-        }
-
-        return MojangApi.getUsername(uuid).thenApply(opt -> {
-            opt.ifPresent(name -> { if (cache != null) cache.updateIfChanged(uuid, name); });
-            return opt;
-        });
+        return getPlayerName(context.getSource().getServer(), uuid);
     }
 
     /**
@@ -47,21 +33,7 @@ public final class CommandUtils {
      * @return an {@link Optional} containing the UUID if found, otherwise {@link Optional#empty()}
      */
     public static CompletableFuture<Optional<UUID>> getUuid(CommandContext<ServerCommandSource> context, String playerName) {
-        ServerPlayerEntity player = context.getSource().getServer()
-                .getPlayerManager()
-                .getPlayer(playerName);
-        if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getUuid()));
-
-        PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
-        if (cache != null) {
-            Optional<UUID> cached = cache.getUuid(playerName);
-            if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
-        }
-
-        return MojangApi.getUuid(playerName).thenApply(opt -> {
-            opt.ifPresent(uuid -> { if (cache != null) cache.updateIfChanged(uuid, playerName); });
-            return opt;
-        });
+        return getUuid(context.getSource().getServer(), playerName);
     }
 
     /**
@@ -73,15 +45,21 @@ public final class CommandUtils {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
         if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getName().getString()));
 
-        PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
-        if (cache != null) {
-            Optional<String> cached = cache.getUsername(uuid);
-            if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
-        }
-
-        return MojangApi.getUsername(uuid).thenApply(opt -> {
-            opt.ifPresent(name -> { if (cache != null) cache.updateIfChanged(uuid, name); });
-            return opt;
+        return CompletableFuture.supplyAsync(() -> {
+            PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
+            return (cache != null) ? cache.getUsername(uuid) : Optional.<String>empty();
+        }).thenCompose(cachedOpt -> {
+           if (cachedOpt.isPresent()) return CompletableFuture.completedFuture(cachedOpt);
+           // if the following check passes, it's likely a bedrock UUID, and we shouldn't waste time with an API call.
+           // if you're reading this, & curious as to why, Java UUIDs will have a nonzero version bit set in this range.
+           if (uuid.getMostSignificantBits() == 0) return CompletableFuture.completedFuture(Optional.empty());
+           return MojangApi.getUsername(uuid).thenApply(apiOpt -> {
+               apiOpt.ifPresent(playerName -> {
+                   PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
+                   if (cache != null) cache.updateIfChanged(uuid, playerName);
+               });
+               return apiOpt;
+           });
         });
     }
 
@@ -94,15 +72,18 @@ public final class CommandUtils {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(playerName);
         if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getUuid()));
 
-        PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
-        if (cache != null) {
-            Optional<UUID> cached = cache.getUuid(playerName);
-            if (cached.isPresent()) return CompletableFuture.completedFuture(cached);
-        }
-
-        return MojangApi.getUuid(playerName).thenApply(opt -> {
-            opt.ifPresent(uuid -> { if (cache != null) cache.updateIfChanged(uuid, playerName); });
-            return opt;
+        return CompletableFuture.supplyAsync(() -> {
+            PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
+            return (cache != null) ? cache.getUuid(playerName) : Optional.<UUID>empty();
+        }).thenCompose(cachedOpt -> {
+            if (cachedOpt.isPresent()) return CompletableFuture.completedFuture(cachedOpt);
+            return MojangApi.getUuid(playerName).thenApply(apiOpt -> {
+                apiOpt.ifPresent(uuid -> {
+                    PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
+                    if (cache != null) cache.updateIfChanged(uuid, playerName);
+                });
+                return apiOpt;
+            });
         });
     }
 
