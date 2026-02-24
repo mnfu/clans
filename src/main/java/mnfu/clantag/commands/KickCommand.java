@@ -129,7 +129,7 @@ public class KickCommand {
                                         // remove the member
                                         clanManager.removeMember(playerClan.name(), targetUuid);
                                         context.getSource().sendMessage(Text.literal(
-                                                "Kicked " + targetName + " from clan " + playerClan.name() + "!"
+                                                "Kicked " + targetName + " from " + playerClan.name() + "!"
                                         ));
                                     })
                             );

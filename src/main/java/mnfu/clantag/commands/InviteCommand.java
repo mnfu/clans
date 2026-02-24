@@ -5,6 +5,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
+import net.minecraft.server.PlayerManager;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -194,6 +195,13 @@ public class InviteCommand {
 
         clanManager.addMember(clanName, executorUuid);
 
+        PlayerManager pm = context.getSource().getServer().getPlayerManager();
+        for (UUID member : clan.members()) {
+            ServerPlayerEntity player = pm.getPlayer(member);
+            if (player != null) {
+                player.sendMessage(Text.literal(executor.getName().getString() + " joined the clan!"));
+            }
+        }
         inviteManager.clearInvitesForPlayer(executorUuid);
 
         MutableText message = Text.literal("You've joined ")
