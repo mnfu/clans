@@ -92,8 +92,8 @@ public class InviteCommand {
             return 0;
         }
 
-        if (!executorClan.leader().equals(executorUuid)) {
-            context.getSource().sendError(Text.literal("Only the clan leader can invite players!"));
+        if (!executorClan.leader().equals(executorUuid) && !executorClan.officers().contains(executorUuid)) {
+            context.getSource().sendError(Text.literal("You are not the leader or an officer of a clan!"));
             return 0;
         }
 

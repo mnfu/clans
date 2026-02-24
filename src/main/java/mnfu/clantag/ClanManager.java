@@ -52,7 +52,7 @@ public class ClanManager {
         LinkedHashSet<UUID> members = new LinkedHashSet<>();
         members.add(leaderUuid);
 
-        Clan clan = new Clan(clanName, leaderUuid, members, "#FFFFFF", true);
+        Clan clan = new Clan(clanName, leaderUuid, new LinkedHashSet<>(), members, "#FFFFFF", true);
         clans.put(canonicalName, clan);
         playerToClanName.put(leaderUuid, clan.name());
         save();
@@ -77,14 +77,12 @@ public class ClanManager {
     public void addMember(String clanName, UUID memberUuid) {
         String canonicalName = canonicalize(clanName);
         Clan clan = clans.get(canonicalName);
-        if (clan == null) {
-            return;
-        }
+        if (clan == null) return;
         LinkedHashSet<UUID> members = new LinkedHashSet<>(clan.members());
         if (members.contains(memberUuid)) return;
         members.add(memberUuid);
 
-        Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor(), clan.isClosed());
+        Clan updatedClan = new Clan(clan.name(), clan.leader(), clan.officers(), members, clan.hexColor(), clan.isClosed());
         clans.put(canonicalName, updatedClan);
         playerToClanName.put(memberUuid, updatedClan.name());
         save();
@@ -97,11 +95,41 @@ public class ClanManager {
         Clan clan = clans.get(canonicalName);
         if (clan == null) return;
         LinkedHashSet<UUID> members = new LinkedHashSet<>(clan.members());
+        LinkedHashSet<UUID> officers = new LinkedHashSet<>(clan.officers());
+        if (!members.contains(memberUUID)) return;
         members.remove(memberUUID);
+        officers.remove(memberUUID);
 
-        Clan updatedClan = new Clan(clan.name(), clan.leader(), members, clan.hexColor(), clan.isClosed());
+        Clan updatedClan = new Clan(clan.name(), clan.leader(), officers, members, clan.hexColor(), clan.isClosed());
         clans.put(canonicalName, updatedClan);
         playerToClanName.remove(memberUUID);
+        save();
+    }
+
+    // i think maybe in the future, we may allow custom roles, but this 95% duplicated code is fine for now.
+    public void addOfficer(String clanName, UUID memberUuid) {
+        String canonicalName = canonicalize(clanName);
+        Clan clan = clans.get(canonicalName);
+        if (clan == null) return;
+        LinkedHashSet<UUID> officers = new LinkedHashSet<>(clan.officers());
+        if (officers.contains(memberUuid)) return;
+        officers.add(memberUuid);
+
+        Clan updatedClan = new Clan(clan.name(), clan.leader(), officers, clan.members(), clan.hexColor(), clan.isClosed());
+        clans.put(canonicalName, updatedClan);
+        save();
+    }
+
+    public void removeOfficer(String clanName, UUID memberUuid) {
+        String canonicalName = canonicalize(clanName);
+        Clan clan = clans.get(canonicalName);
+        if (clan == null) return;
+        LinkedHashSet<UUID> officers = new LinkedHashSet<>(clan.officers());
+        if (!officers.contains(memberUuid)) return;
+        officers.remove(memberUuid);
+
+        Clan updatedClan = new Clan(clan.name(), clan.leader(), officers, clan.members(), clan.hexColor(), clan.isClosed());
+        clans.put(canonicalName, updatedClan);
         save();
     }
 
@@ -115,8 +143,10 @@ public class ClanManager {
         Clan clan = clans.get(canonicalName);
         if (clan == null) return false; // could not find clan in memory or whatev
         if (!clan.members().contains(newLeaderUUID)) return false;
+        LinkedHashSet<UUID> officers = new LinkedHashSet<>(clan.officers());
+        officers.remove(newLeaderUUID);
 
-        Clan updatedClan = new Clan(clan.name(), newLeaderUUID, clan.members(), clan.hexColor(), clan.isClosed());
+        Clan updatedClan = new Clan(clan.name(), newLeaderUUID, officers, clan.members(), clan.hexColor(), clan.isClosed());
         clans.put(canonicalName, updatedClan);
         save();
         return true;
@@ -133,7 +163,7 @@ public class ClanManager {
         String canonicalName = canonicalize(clanName);
         Clan clan = clans.get(canonicalName);
         if (clan == null) return false;
-        Clan updatedClan = new Clan(clan.name(), clan.leader(), clan.members(), hexColor, clan.isClosed());
+        Clan updatedClan = new Clan(clan.name(), clan.leader(), clan.officers(), clan.members(), hexColor, clan.isClosed());
         clans.put(canonicalName, updatedClan);
         save();
         return true;
@@ -167,124 +197,93 @@ public class ClanManager {
     public boolean load() {
         if (!file.exists()) return false;
 
-        // temporary maps to avoid overwriting current state if something fails catastrophically
-        Map<String, Clan> tempClans = new HashMap<>();
-        Map<UUID, String> tempPlayerToClanName = new HashMap<>();
-
         try (Reader reader = new FileReader(file)) {
             Type type = new TypeToken<Map<String, Clan>>() {}.getType();
-            Map<String, Clan> loaded = gson.fromJson(reader, type);
+            Map<String, Clan> raw = gson.fromJson(reader, type);
+            if (raw == null) return false;
 
-            if (loaded == null) return false;
+            Map<String, Clan> tempClans = new HashMap<>();
+            Map<UUID, String> tempPlayerToClan = new HashMap<>();
 
-            for (Map.Entry<String, Clan> entry : loaded.entrySet()) {
+            for (Map.Entry<String, Clan> entry : raw.entrySet()) {
                 try {
-                    Clan readClan = entry.getValue();
-                    if (readClan == null) {
-                        logger.warn("Encountered null clan entry for key: {}", entry.getKey());
-                        continue;
-                    }
-
-                    if (readClan.leader() == null) {
-                        logger.warn("Clan {} has no leader. Skipping.", readClan.name());
-                        continue;
-                    }
-
-                    String clanName = readClan.name();
-                    UUID leaderUuid = readClan.leader();
-                    LinkedHashSet<UUID> cleanedMembers = new LinkedHashSet<>();
-
-                    if (readClan.members() != null) {
-                        for (UUID memberUUID : readClan.members()) {
-                            if (memberUUID == null) {
-                                logger.warn("Null UUID found in clan {}. Skipping.", clanName);
-                                continue;
-                            }
-
-                            if (tempPlayerToClanName.containsKey(memberUUID)) {
-                                String existingClanName = tempPlayerToClanName.get(memberUUID);
-                                Clan existingClan = tempClans.get(existingClanName);
-
-                                boolean isLeaderInExisting = existingClan != null && memberUUID.equals(existingClan.leader());
-                                boolean isLeaderInCurrent = memberUUID.equals(leaderUuid);
-
-                                if (isLeaderInExisting) {
-                                    if (isLeaderInCurrent) {
-                                        logger.warn(
-                                                "Skipping clan {} because its leader {} is already leading another clan",
-                                                clanName, memberUUID
-                                        );
-                                        readClan = null;
-                                        break;
-                                    }
-                                    logger.warn(
-                                            "UUID {} is a leader in clan {}. Respecting first occurrence.",
-                                            memberUUID, existingClanName
-                                    );
-                                    continue;
-                                }
-
-                                if (isLeaderInCurrent) {
-                                    logger.warn(
-                                            "UUID {} is the leader of clan {}. Overriding previous clan {}.",
-                                            memberUUID, clanName, existingClanName
-                                    );
-                                } else {
-                                    logger.warn(
-                                            "UUID {} appears in multiple clans. Respecting first occurrence.",
-                                            memberUUID
-                                    );
-                                    continue;
-                                }
-                            }
-
-                            tempPlayerToClanName.put(memberUUID, clanName);
-                            cleanedMembers.add(memberUUID);
-                        }
-                    }
-
-                    if (readClan != null) {
-                        // ensure the leader is always in the member list
-
-                        if (!cleanedMembers.contains(leaderUuid)) {
-                            cleanedMembers.add(leaderUuid);
-                            logger.info(
-                                    "Added leader {} to members of clan {}",
-                                    leaderUuid, clanName
-                            );
-                        }
-
-                        Clan clan = new Clan(
-                                clanName, leaderUuid, cleanedMembers, readClan.hexColor(), readClan.isClosed()
-                        );
-                        tempClans.put(canonicalize(clanName), clan);
-                    }
-
+                    processRawClan(entry.getValue(), tempClans, tempPlayerToClan);
                 } catch (Exception e) {
-                    logger.error("Error processing clan {}. Skipping this clan.", entry.getKey(), e);
+                    logger.error("Error processing clan {}. Skipping.", entry.getKey(), e);
                 }
             }
 
-            // Swap in temp maps only if parsing succeeded
             clans.clear();
             clans.putAll(tempClans);
             playerToClanName.clear();
-            playerToClanName.putAll(tempPlayerToClanName);
-
+            playerToClanName.putAll(tempPlayerToClan);
             ENABLE_SAVES = true;
             return true;
 
-        } catch (IOException e) {
-            logger.error("Failed to read clans.json", e);
-            return false;
-        } catch (JsonParseException e) {
-            logger.error(
-                    "Failed to parse clans.json. Was it manually edited incorrectly? Disabling writes to clans.json until this is resolved.",
-                    e
-            );
-            ENABLE_SAVES = false;
+        } catch (IOException | JsonParseException e) {
+            ENABLE_SAVES = e instanceof IOException;
+            logger.error("Failed to load clans.json", e);
             return false;
         }
+    }
+
+    private void processRawClan(Clan raw, Map<String, Clan> tempClans, Map<UUID, String> tempPlayerToClan) {
+        if (raw == null || raw.leader() == null) return;
+
+        String clanName = raw.name();
+        UUID leaderUuid = raw.leader();
+        LinkedHashSet<UUID> cleanedMembers = new LinkedHashSet<>();
+        LinkedHashSet<UUID> cleanedOfficers = new LinkedHashSet<>();
+
+        if (raw.members() != null) {
+            for (UUID uuid : raw.members()) {
+                if (uuid == null) continue;
+                ConflictResult result = resolveConflict(uuid, leaderUuid, tempClans, tempPlayerToClan);
+                if (result == ConflictResult.SKIP_CLAN) return;
+                if (result == ConflictResult.SKIP_MEMBER) continue;
+                tempPlayerToClan.put(uuid, clanName);
+                cleanedMembers.add(uuid);
+            }
+        }
+
+        // leader must always be present
+        if (!cleanedMembers.contains(leaderUuid)) {
+            cleanedMembers.add(leaderUuid);
+            tempPlayerToClan.put(leaderUuid, clanName);
+        }
+
+        if (raw.officers() != null) {
+            for (UUID uuid : raw.officers()) {
+                if (uuid == null) continue;
+                ConflictResult result = resolveConflict(uuid, leaderUuid, tempClans, tempPlayerToClan);
+                if (result == ConflictResult.SKIP_CLAN) return;
+                if (result == ConflictResult.SKIP_MEMBER) continue;
+                if (!cleanedMembers.contains(uuid)) {
+                    cleanedMembers.add(uuid);
+                    tempPlayerToClan.put(uuid, clanName);
+                }
+                cleanedOfficers.add(uuid);
+            }
+        }
+
+        tempClans.put(canonicalize(clanName),
+                new Clan(clanName, leaderUuid, cleanedOfficers, cleanedMembers, raw.hexColor(), raw.isClosed()));
+    }
+
+    private enum ConflictResult { OK, SKIP_MEMBER, SKIP_CLAN }
+
+    private ConflictResult resolveConflict(UUID uuid, UUID currentLeader,
+                                           Map<String, Clan> tempClans, Map<UUID, String> tempPlayerToClan) {
+        String existingClanName = tempPlayerToClan.get(uuid);
+        if (existingClanName == null) return ConflictResult.OK;
+
+        Clan existingClan = tempClans.get(existingClanName);
+        boolean isLeaderOfExisting = existingClan != null && uuid.equals(existingClan.leader());
+        boolean isLeaderOfCurrent = uuid.equals(currentLeader);
+
+        if (isLeaderOfExisting && isLeaderOfCurrent) return ConflictResult.SKIP_CLAN;
+        if (isLeaderOfExisting) return ConflictResult.SKIP_MEMBER;
+        return ConflictResult.OK; // current clan wins, player will be reassigned
     }
 
     public void save() {

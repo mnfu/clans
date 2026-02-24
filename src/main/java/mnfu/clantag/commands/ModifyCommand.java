@@ -17,7 +17,6 @@ import net.minecraft.util.Formatting;
 
 import java.util.Collection;
 import java.util.Locale;
-import java.util.UUID;
 
 public class ModifyCommand {
     private final ClanManager clanManager;
@@ -29,16 +28,6 @@ public class ModifyCommand {
 
     public LiteralArgumentBuilder<ServerCommandSource> build() {
         return CommandManager.literal("modify")
-                .requires(source -> {
-                    // this requires block means this command is restricted to clan leaders only
-                    ServerPlayerEntity player = source.getPlayer();
-                    if (player == null) return false;
-                    UUID playerUuid = player.getUuid();
-                    Clan clan = clanManager.getPlayerClan(playerUuid);
-                    if (clan == null) return false;
-                    return clan.leader().equals(playerUuid);
-                })
-
                 // color <newColorNameOrHex>
                 .then(CommandManager.literal("color")
                         .then(CommandManager.argument("newColorNameOrHex", StringArgumentType.greedyString())
@@ -57,7 +46,6 @@ public class ModifyCommand {
                     context.getSource().sendError(Text.literal("Valid subcommands: color"));
                     return 0;
                 });
-
     }
 
     private int executeColor(CommandContext<ServerCommandSource> context) {
@@ -65,6 +53,10 @@ public class ModifyCommand {
         if (executor == null) return 0;
         Clan clan = clanManager.getPlayerClan(executor.getUuid());
         if (clan == null) return 0;
+        if (!clan.leader().equals(executor.getUuid())) {
+            context.getSource().sendError(Text.literal("You must be a clan leader to use this command!"));
+            return 0;
+        }
 
         String newColor = StringArgumentType.getString(context, "newColorNameOrHex");
 
