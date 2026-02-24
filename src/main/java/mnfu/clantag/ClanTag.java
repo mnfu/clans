@@ -87,16 +87,17 @@ public class ClanTag implements ModInitializer {
 
             var createCommand = new CreateCommand(clanManager).build();
             var disbandCommand = new DisbandCommand(clanManager).build();
+            var joinCommand = new JoinCommand(clanManager).build();
             var kickCommand = new KickCommand(clanManager).build();
             var leaveCommand = new LeaveCommand(clanManager).build();
-            var modifyCommand = new ModifyCommand(clanManager).build();
+            var setCommand = new SetCommand(clanManager).build();
             var transferCommand = new TransferLeadershipCommand(clanManager).build();
             var promoteCommand = new PromoteCommand(clanManager).build();
             var demoteCommand = new DemoteCommand(clanManager).build();
 
             dispatcher.register(baseCommand
                     .then(adminCommand)
-                    .then(modifyCommand)
+                    .then(setCommand)
                     .then(infoCommand)
                     .then(inviteSubcommand)
                     .then(acceptCommand)
@@ -104,6 +105,7 @@ public class ClanTag implements ModInitializer {
                     .then(invitesCommand)
                     .then(createCommand)
                     .then(disbandCommand)
+                    .then(joinCommand)
                     .then(kickCommand)
                     .then(leaveCommand)
                     .then(transferCommand)

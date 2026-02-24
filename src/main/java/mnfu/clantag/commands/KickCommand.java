@@ -4,6 +4,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
+import net.minecraft.server.PlayerManager;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -109,6 +110,15 @@ public class KickCommand {
                                                 return;
                                             }
                                             clanManager.removeMember(playerClan.name(), targetUuid);
+                                            PlayerManager pm = context.getSource().getServer().getPlayerManager();
+                                            String executorName = executor.getName().getString();
+                                            for (UUID member : playerClan.members()) {
+                                                if (member.equals(targetUuid)) continue;
+                                                ServerPlayerEntity player = pm.getPlayer(member);
+                                                if (player != null) {
+                                                    player.sendMessage(Text.literal(executorName + " was kicked from the clan by " + executorName));
+                                                }
+                                            }
                                             context.getSource().sendMessage(Text.literal("You have kicked yourself from " + playerClan.name() + "!"));
                                             return;
                                         }
@@ -128,8 +138,17 @@ public class KickCommand {
 
                                         // remove the member
                                         clanManager.removeMember(playerClan.name(), targetUuid);
+                                        PlayerManager pm = context.getSource().getServer().getPlayerManager();
+                                        String executorName = executor.getName().getString();
+                                        for (UUID member : playerClan.members()) {
+                                            if (member.equals(executorUuid) || member.equals(targetUuid)) continue;
+                                            ServerPlayerEntity player = pm.getPlayer(member);
+                                            if (player != null) {
+                                                player.sendMessage(Text.literal(targetName + " was kicked from the clan by " + executorName));
+                                            }
+                                        }
                                         context.getSource().sendMessage(Text.literal(
-                                                "Kicked " + targetName + " from clan " + playerClan.name() + "!"
+                                                "Kicked " + targetName + " from " + playerClan.name() + "!"
                                         ));
                                     })
                             );
