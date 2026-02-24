@@ -26,6 +26,7 @@ public class ClanManager {
     private final InviteManager inviteManager;
     private static boolean ENABLE_SAVES = true;
     private final boolean loadedSuccessfully;
+    public enum JoinPolicy{OPEN, INVITE_ONLY}
 
     public ClanManager(File file, Logger logger, InviteManager inviteManager) {
         this.logger = logger;
@@ -167,6 +168,17 @@ public class ClanManager {
         clans.put(canonicalName, updatedClan);
         save();
         return true;
+    }
+
+    public void changePolicy(String clanName, JoinPolicy joinPolicy) {
+        String canonicalName = canonicalize(clanName);
+        Clan clan = clans.get(canonicalName);
+        if (clan == null) return;
+        if (joinPolicy == null) return;
+        boolean newPolicy = joinPolicy != JoinPolicy.OPEN;
+        Clan updatedClan = new Clan(clan.name(), clan.leader(), clan.officers(), clan.members(), clan.hexColor(), newPolicy);
+        clans.put(canonicalName, updatedClan);
+        save();
     }
 
     @Nullable

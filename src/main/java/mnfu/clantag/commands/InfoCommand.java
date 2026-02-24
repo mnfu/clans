@@ -113,6 +113,9 @@ public class InfoCommand {
                         message.append(Text.literal(clan.hexColor())
                                 .setStyle(Style.EMPTY.withColor(clanColor)));
                     }
+                    message.append(", Status: ").formatted(Formatting.WHITE);
+                    message.append(Text.literal(clan.isClosed() ? "Invite Only" : "Open")
+                            .formatted(clan.isClosed() ? Formatting.RED : Formatting.GREEN));
 
                     context.getSource().getServer().execute(() -> context.getSource().sendMessage(message));
                 });

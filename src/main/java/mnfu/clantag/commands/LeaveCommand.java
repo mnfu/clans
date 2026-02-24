@@ -3,6 +3,7 @@ package mnfu.clantag.commands;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
+import net.minecraft.server.PlayerManager;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -55,6 +56,14 @@ public class LeaveCommand {
 
                     // normal member leaving
                     clanManager.removeMember(playerClan.name(), executorUuid);
+                    PlayerManager pm = context.getSource().getServer().getPlayerManager();
+                    for (UUID member : playerClan.members()) {
+                        if (member.equals(executorUuid)) continue;
+                        ServerPlayerEntity player = pm.getPlayer(member);
+                        if (player != null) {
+                            player.sendMessage(Text.literal(executor.getName().getString() + " left the clan!"));
+                        }
+                    }
                     context.getSource().sendMessage(Text.literal(
                             "You have left " + playerClan.name() + "!"
                     ));
