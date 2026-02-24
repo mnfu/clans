@@ -25,14 +25,30 @@ public class KickCommand {
         return CommandManager.literal("kick")
                 .then(CommandManager.argument("playerName", StringArgumentType.word())
                         .suggests((context, builder) -> {
-                            ServerPlayerEntity player = context.getSource().getPlayer();
-                            if (player == null) return builder.buildFuture();
-                            Clan clan = clanManager.getPlayerClan(player.getUuid());
+                            ServerPlayerEntity executor = context.getSource().getPlayer();
+                            if (executor == null) return builder.buildFuture();
+
+                            Clan clan = clanManager.getPlayerClan(executor.getUuid());
                             if (clan == null) return builder.buildFuture();
+
+                            boolean executorIsLeader = clan.leader().equals(executor.getUuid());
+                            boolean executorIsOfficer = clan.officers().contains(executor.getUuid());
+
                             CompletableFuture<?>[] nameFutures = clan.members().stream()
+                                    .filter(targetUuid -> {
+                                        // always allow self for self-kick
+                                        if (targetUuid.equals(executor.getUuid())) return true;
+
+                                        // leader can kick anyone
+                                        if (executorIsLeader) return true;
+
+                                        // officer can kick only members (not leader or other officers)
+                                        return executorIsOfficer && !targetUuid.equals(clan.leader()) && !clan.officers().contains(targetUuid);
+                                    })
                                     .map(uuid -> CommandUtils.getPlayerName(context, uuid)
                                             .thenAccept(optName -> optName.ifPresent(builder::suggest)))
                                     .toArray(CompletableFuture[]::new);
+
                             return CompletableFuture.allOf(nameFutures)
                                     .thenApply(v -> builder.build());
                         })
@@ -53,8 +69,11 @@ public class KickCommand {
                                 return 0;
                             }
 
-                            if (!playerClan.leader().equals(executorUuid)) {
-                                context.getSource().sendError(Text.literal("You are not the leader of a clan!"));
+                            boolean executorIsClanLeader = playerClan.leader().equals(executorUuid);
+                            boolean executorIsClanOfficer = playerClan.officers().contains(executorUuid);
+
+                            if (!executorIsClanLeader && !executorIsClanOfficer) {
+                                context.getSource().sendError(Text.literal("You are not the leader or an officer of a clan!"));
                                 return 0;
                             }
 
@@ -83,12 +102,29 @@ public class KickCommand {
                                                 ));
                                                 return;
                                             }
+                                            if (executorIsClanLeader) {
+                                                context.getSource().sendError(Text.literal(
+                                                        "You must transfer ownership before leaving or disbanding the clan!"
+                                                ));
+                                                return;
+                                            }
+                                            clanManager.removeMember(playerClan.name(), targetUuid);
+                                            context.getSource().sendMessage(Text.literal("You have kicked yourself from " + playerClan.name() + "!"));
+                                            return;
+                                        }
 
+                                        boolean targetIsLeader = targetUuid.equals(playerClan.leader());
+                                        boolean targetIsOfficer = playerClan.officers().contains(targetUuid);
+
+                                        // officer trying to kick leader or officer
+                                        if (executorIsClanOfficer && (targetIsLeader || targetIsOfficer)) {
                                             context.getSource().sendError(Text.literal(
-                                                    "You must transfer ownership before leaving or disbanding the clan!"
+                                                    "Officers cannot kick other officers or the leader!"
                                             ));
                                             return;
                                         }
+
+                                        // leader can kick anyone, so no check needed
 
                                         // remove the member
                                         clanManager.removeMember(playerClan.name(), targetUuid);

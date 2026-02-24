@@ -91,6 +91,8 @@ public class ClanTag implements ModInitializer {
             var leaveCommand = new LeaveCommand(clanManager).build();
             var modifyCommand = new ModifyCommand(clanManager).build();
             var transferCommand = new TransferLeadershipCommand(clanManager).build();
+            var promoteCommand = new PromoteCommand(clanManager).build();
+            var demoteCommand = new DemoteCommand(clanManager).build();
 
             dispatcher.register(baseCommand
                     .then(adminCommand)
@@ -105,6 +107,8 @@ public class ClanTag implements ModInitializer {
                     .then(kickCommand)
                     .then(leaveCommand)
                     .then(transferCommand)
+                    .then(promoteCommand)
+                    .then(demoteCommand)
                     .executes(context -> {
                         context.getSource().sendFeedback(()->Text.literal("Command help message not implemented, WIP!"), false);
                         return 1;

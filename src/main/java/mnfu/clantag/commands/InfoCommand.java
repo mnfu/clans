@@ -76,76 +76,76 @@ public class InfoCommand {
 
     private void displayClanInfo(CommandContext<ServerCommandSource> context, Clan clan) {
         MutableText message = Text.empty();
-
         TextColor clanColor = TextColor.parse(clan.hexColor()).getOrThrow();
 
         message.append(Text.literal(clan.name())
                 .setStyle(Style.EMPTY.withColor(clanColor)));
-
         message.append(Text.literal(" (" + clan.name() + ")").formatted(Formatting.GRAY))
                 .append("\n");
 
-        // async leader name
         getPlayerName(context, clan.leader()).thenAccept(optLeaderName -> {
             String leaderName = optLeaderName.orElse("Unknown Player");
 
             message.append(Text.literal("Leader: ").formatted(Formatting.WHITE))
-                    .append(Text.literal(leaderName).formatted(Formatting.YELLOW))
+                    .append(Text.literal(leaderName).formatted(Formatting.GOLD))
                     .append("\n");
 
-            // async members
-            formatMembersList(context, clan).thenAccept(membersText -> {
-                message.append(Text.literal("Members: ").formatted(Formatting.WHITE))
-                        .append(membersText)
-                        .append("\n");
-
-                // color
-                message.append(Text.literal("Color: ").formatted(Formatting.WHITE));
-
-                MinecraftColor color = MinecraftColor.fromColor(
-                        Integer.parseInt(clan.hexColor().substring(1), 16)
-                );
-                if (color != null) {
-                    message.append(Text.literal(color.getDisplayName())
-                            .setStyle(Style.EMPTY.withColor(clanColor)));
-                } else {
-                    message.append(Text.literal(clan.hexColor())
-                            .setStyle(Style.EMPTY.withColor(clanColor)));
+            formatPlayerList(context, clan.officers(), clan.leader(), clan.officers()).thenAccept(officersText -> {
+                if (!clan.officers().isEmpty()) {
+                    message.append(Text.literal("Officers: ").formatted(Formatting.WHITE))
+                            .append(officersText)
+                            .append("\n");
                 }
 
-                // finally send the message on the main thread
-                context.getSource().getServer().execute(() -> context.getSource().sendMessage(message));
+                formatPlayerList(context, clan.members(), clan.leader(), clan.officers()).thenAccept(membersText -> {
+                    message.append(Text.literal("Members: ").formatted(Formatting.WHITE))
+                            .append(membersText)
+                            .append("\n");
+
+                    message.append(Text.literal("Color: ").formatted(Formatting.WHITE));
+                    MinecraftColor color = MinecraftColor.fromColor(
+                            Integer.parseInt(clan.hexColor().substring(1), 16)
+                    );
+                    if (color != null) {
+                        message.append(Text.literal(color.getDisplayName())
+                                .setStyle(Style.EMPTY.withColor(clanColor)));
+                    } else {
+                        message.append(Text.literal(clan.hexColor())
+                                .setStyle(Style.EMPTY.withColor(clanColor)));
+                    }
+
+                    context.getSource().getServer().execute(() -> context.getSource().sendMessage(message));
+                });
             });
         });
     }
 
-    private CompletableFuture<MutableText> formatMembersList(CommandContext<ServerCommandSource> context, Clan clan) {
-        LinkedHashSet<UUID> memberUuids = clan.members();
-        UUID leaderUuid = clan.leader();
-
-        // create a future per member
-        List<CompletableFuture<MutableText>> futures = memberUuids.stream()
-                .map(memberUuid ->
-                    getPlayerName(context, memberUuid).thenApply(optName -> {
-                        String name = optName.orElse("Unknown Player");
-
-                        Formatting format = memberUuid.equals(leaderUuid)
-                                ? Formatting.YELLOW
-                                : Formatting.GRAY;
-
-                        return Text.literal(name).formatted(format);
-                    })
+    private CompletableFuture<MutableText> formatPlayerList(CommandContext<ServerCommandSource> context,
+                                                            LinkedHashSet<UUID> uuids,
+                                                            UUID leaderUuid,
+                                                            LinkedHashSet<UUID> officerUuids) {
+        List<CompletableFuture<MutableText>> futures = uuids.stream()
+                .map(uuid ->
+                        getPlayerName(context, uuid).thenApply(optName -> {
+                            String name = optName.orElse("Unknown Player");
+                            Formatting format;
+                            if (uuid.equals(leaderUuid)) {
+                                format = Formatting.GOLD;
+                            } else if (officerUuids.contains(uuid)) {
+                                format = Formatting.YELLOW;
+                            } else {
+                                format = Formatting.GRAY;
+                            }
+                            return Text.literal(name).formatted(format);
+                        })
                 )
                 .toList();
 
-        CompletableFuture<?>[] futuresArray = futures.toArray(CompletableFuture[]::new);
-
-        // combine all futures in order, append comma between members
-        return CompletableFuture.allOf(futuresArray)
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
                 .thenApply(v -> {
                     MutableText list = Text.empty();
                     for (int i = 0; i < futures.size(); i++) {
-                        list.append(futures.get(i).join()); // safe, already completed
+                        list.append(futures.get(i).join());
                         if (i < futures.size() - 1) {
                             list.append(Text.literal(", ").formatted(Formatting.GRAY));
                         }
