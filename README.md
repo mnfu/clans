@@ -13,7 +13,7 @@ Currently the default value is not configurable, as this was made for a specific
 - `%clantag:player_clan_name%` - in the context of a player, this evaluates to their colorless clan name (White)
 - `%clantag:player_clan_name_colored%` - in the context of a player, this evaluates to their colored clan name
 
-## Commands
+## Commands - `Updated as of 1.1.0-dev`
 `/clan` - base command.
 
 ### Regular Commands
@@ -28,6 +28,8 @@ Currently the default value is not configurable, as this was made for a specific
 
 `/clan decline <clanName>` - alternative to clicking in chat to decline an invite.
 
+`/clan join <clanName` - joins a clan if it is open to joins.
+
 `/clan leave` - leaves your current clan. If you are a leader of a clan with no other members, this just disbands the clan.
 
 ### Clan Leader Commands - Only work for clan leaders (some also only show up for clan leaders)
@@ -40,7 +42,9 @@ Currently the default value is not configurable, as this was made for a specific
 
 `/clan disband confirm` - deletes your clan (you can run this directly, there is no check that you executed the prior).
 
-`/clan modify color <colorName/hexCode>` - changes the color code of your clan.
+`/clan set color <colorName/hexCode>` - changes the color code of your clan.
+
+`/clan set access <open|invite_only|toggle>` - changes the access state of your clan between being open or invite only.
 
 `/clan transfer <playerName>` - transfers clan ownership to player if they are a member of your clan.
 
