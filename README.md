@@ -19,7 +19,7 @@ Currently the default value is not configurable, as this was made for a specific
 
 | Placeholder | Description |
 |-------------|-------------|
-| `%clantag:player_clan_name%` | Evaluates to a player's colorless clan name (white) |
+| `%clantag:player_clan_name%` | Evaluates to a player's colorless clan name (gray) |
 | `%clantag:player_clan_name_colored%` | Evaluates to a player's colored clan name |
 
 ---
