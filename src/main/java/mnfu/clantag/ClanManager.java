@@ -181,6 +181,26 @@ public class ClanManager {
         save();
     }
 
+    public boolean changeName(String clanName, String newClanName) {
+        String canonicalName = canonicalize(clanName);
+        Clan clan = clans.get(canonicalName);
+        if (clan == null) return false;
+        if (!containsAllowedChars(newClanName)) return false;
+        String canonicalNewClanName = canonicalize(newClanName);
+        if (isABannedName(canonicalNewClanName)) return false;
+        if (clans.containsKey(canonicalNewClanName)) return false;
+
+        Clan updatedClan = new Clan(newClanName, clan.leader(), clan.officers(), clan.members(), clan.hexColor(), clan.isClosed());
+        clans.remove(canonicalName);
+        clans.put(canonicalNewClanName, updatedClan);
+        for (UUID uuid : clan.members()) {
+            playerToClanName.put(uuid, updatedClan.name());
+        }
+        save();
+        inviteManager.clearInvitesForClan(clan.name());
+        return true;
+    }
+
     @Nullable
     public Clan getClan(String clanName) {
         return clans.get(canonicalize(clanName));

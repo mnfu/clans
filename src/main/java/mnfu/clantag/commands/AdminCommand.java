@@ -6,17 +6,33 @@ import com.mojang.brigadier.context.CommandContext;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
 import mnfu.clantag.MojangApi;
+import net.luckperms.api.LuckPerms;
+import net.luckperms.api.LuckPermsProvider;
+import net.luckperms.api.model.user.User;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 import java.util.UUID;
+import java.util.function.Predicate;
 
 import static mnfu.clantag.commands.CommandUtils.getUuid;
 
 public class AdminCommand {
     private final ClanManager clanManager;
+    private LuckPerms lpApi = null;
+    private static final Predicate<ServerCommandSource> OWNER_CHECK =
+            CommandManager.requirePermissionLevel(CommandManager.OWNERS_CHECK);
+
+    private final String addUsageMessage = "Usage: /clan admin add <playerName> <clanName>";
+    private final String removeUsageMessage = "Usage: /clan admin remove <playerName> <clanName>";
+    private final String transferUsageMessage = "Usage: /clan admin transfer <playerName> <clanName>";
+    private final String renameUsageMessage = "Usage: /clan admin rename <\"clanName\"> <newClanName>";
+    private final String deleteUsageMessage = "Usage: /clan admin delete <clanName>";
+    private final String cacheUsageMessage = "Usage: /clan admin cache clear";
 
     public AdminCommand(ClanManager clanManager) {
         this.clanManager = clanManager;
@@ -24,10 +40,9 @@ public class AdminCommand {
 
     public LiteralArgumentBuilder<ServerCommandSource> build() {
         return CommandManager.literal("admin")
-                .requires(CommandManager.requirePermissionLevel(CommandManager.OWNERS_CHECK))
-
                 // add <playerName> <clanName>
                 .then(CommandManager.literal("add")
+                        .requires(source -> hasPermission(source, "clantag.admin.add"))
                         .then(CommandManager.argument("playerName", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     for (String n : context.getSource().getServer().getPlayerNames()) {
@@ -44,11 +59,20 @@ public class AdminCommand {
                                         })
                                         .executes(this::executeAdd)
                                 )
+                                .executes(context -> {
+                                    context.getSource().sendError(Text.literal(addUsageMessage));
+                                    return 0;
+                                })
                         )
+                        .executes(context -> {
+                            context.getSource().sendError(Text.literal(addUsageMessage));
+                            return 0;
+                        })
                 )
 
                 // remove <playerName> <clanName>
                 .then(CommandManager.literal("remove")
+                        .requires(source -> hasPermission(source, "clantag.admin.remove"))
                         .then(CommandManager.argument("playerName", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     for (String n : context.getSource().getServer().getPlayerNames()) {
@@ -65,11 +89,20 @@ public class AdminCommand {
                                         })
                                         .executes(this::executeRemove)
                                 )
+                                .executes(context -> {
+                                    context.getSource().sendError(Text.literal(removeUsageMessage));
+                                    return 0;
+                                })
                         )
+                        .executes(context -> {
+                            context.getSource().sendError(Text.literal(removeUsageMessage));
+                            return 0;
+                        })
                 )
 
                 // transfer <playerName> <clanName>
                 .then(CommandManager.literal("transfer")
+                        .requires(source -> hasPermission(source, "clantag.admin.transfer"))
                         .then(CommandManager.argument("playerName", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     for (String n : context.getSource().getServer().getPlayerNames()) {
@@ -86,11 +119,43 @@ public class AdminCommand {
                                         })
                                         .executes(this::executeTransfer)
                                 )
+                                .executes(context -> {
+                                    context.getSource().sendError(Text.literal(transferUsageMessage));
+                                    return 0;
+                                })
                         )
+                        .executes(context -> {
+                            context.getSource().sendError(Text.literal(transferUsageMessage));
+                            return 0;
+                        })
+                )
+
+                .then(CommandManager.literal("rename")
+                        .requires(source -> hasPermission(source, "clantag.admin.rename"))
+                        .then(CommandManager.argument("clanName", StringArgumentType.string())
+                                .suggests((context, builder) -> {
+                                    for (Clan c : clanManager.getAllClans()) {
+                                        builder.suggest(c.name());
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .then(CommandManager.argument("newClanName", StringArgumentType.greedyString())
+                                        .executes(this::executeRename)
+                                )
+                                .executes(context -> {
+                                    context.getSource().sendError(Text.literal(renameUsageMessage));
+                                    return 0;
+                                })
+                        )
+                        .executes(context -> {
+                            context.getSource().sendError(Text.literal(renameUsageMessage));
+                            return 0;
+                        })
                 )
 
                 // delete <clanName> (confirm)
                 .then(CommandManager.literal("delete")
+                        .requires(source -> hasPermission(source, "clantag.admin.delete"))
                         .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                                 .suggests((context, builder) -> {
                                     for (Clan c : clanManager.getAllClans()) {
@@ -100,10 +165,15 @@ public class AdminCommand {
                                 })
                                 .executes(this::executeDelete)
                         )
+                        .executes(context -> {
+                            context.getSource().sendError(Text.literal(deleteUsageMessage));
+                            return 0;
+                        })
                 )
 
                 // reload
                 .then(CommandManager.literal("reload")
+                        .requires(source -> hasPermission(source, "clantag.admin.reload"))
                         .executes(context -> {
                             boolean reloaded = clanManager.load();
                             if (reloaded) {
@@ -117,6 +187,7 @@ public class AdminCommand {
 
                 // cache clear
                 .then(CommandManager.literal("cache")
+                        .requires(source -> hasPermission(source, "clantag.admin.cache"))
                         .then(CommandManager.literal("clear")
                                 .executes(context -> {
                                     MojangApi.clearCache();
@@ -126,24 +197,49 @@ public class AdminCommand {
                                     return 1;
                                 })
                         )
+                        .executes(context -> {
+                            context.getSource().sendError(Text.literal(cacheUsageMessage));
+                            return 0;
+                        })
                 )
 
                 // default response
                 .executes(context -> {
-                    context.getSource().sendError(Text.literal("Valid subcommands: add, remove, transfer, disband, cache, reload"));
+                    context.getSource().sendError(Text.literal("Valid subcommands: add, remove, transfer, rename, disband, cache, reload"));
                     return 0;
                 });
 
+    }
+
+    private boolean hasPermission(ServerCommandSource source, String node) {
+        if (!source.isExecutedByPlayer()) { // console/other source that is non-player
+            return true;
+        }
+        ServerPlayerEntity player = source.getPlayer();
+        if (player == null) return false;
+        UUID playerUuid = player.getUuid();
+
+        if (lpApi == null) {
+            try {
+                lpApi = LuckPermsProvider.get();
+            } catch (IllegalStateException e) {
+                // LP not ready yet, deny command
+                return false;
+            }
+        }
+
+        User user = lpApi.getUserManager().getUser(playerUuid);
+
+        boolean hasPermissionNode = user != null && user.getCachedData().getPermissionData().checkPermission(node).asBoolean();
+        boolean hasOwnerLevelOp = OWNER_CHECK.test(source); //fallback if they have no permissions
+        return hasPermissionNode || hasOwnerLevelOp;
     }
 
     private int executeAdd(CommandContext<ServerCommandSource> context) {
         String clanName = StringArgumentType.getString(context, "clanName");
         String playerName = StringArgumentType.getString(context, "playerName");
 
-        if (clanName == null || playerName == null) {
-            context.getSource().sendError(Text.literal("Usage: /clan admin add <clanName> <playerName>"));
-            return 0;
-        }
+        if (clanName == null || playerName == null) return 0;
 
         Clan clan = clanManager.getClan(clanName);
         if (clan == null) {
@@ -173,11 +269,7 @@ public class AdminCommand {
         String clanName = StringArgumentType.getString(context, "clanName");
         String playerName = StringArgumentType.getString(context, "playerName");
 
-        if (clanName == null || playerName == null) {
-            context.getSource().sendError(Text.literal("Usage: /clan admin remove <clanName> <playerName>"));
-            return 0;
-        }
-
+        if (clanName == null || playerName == null) return 0;
         Clan clan = clanManager.getClan(clanName);
         if (clan == null) {
             context.getSource().sendError(Text.literal("Clan not found!"));
@@ -214,11 +306,7 @@ public class AdminCommand {
         String playerName = StringArgumentType.getString(context, "playerName");
         String clanName = StringArgumentType.getString(context, "clanName");
 
-        if (playerName == null || clanName == null) {
-            context.getSource().sendError(Text.literal("Usage: /clan admin transfer <playerName> <clanName>"));
-            return 0;
-        }
-
+        if (playerName == null || clanName == null) return 0;
         Clan clan = clanManager.getClan(clanName);
         if (clan == null) {
             context.getSource().sendError(Text.literal("Clan not found!"));
@@ -251,6 +339,34 @@ public class AdminCommand {
         );
 
         return 1;
+    }
+
+    private int executeRename(CommandContext<ServerCommandSource> context) {
+        String oldClanName = StringArgumentType.getString(context, "clanName");
+        String newClanName = StringArgumentType.getString(context, "newClanName");
+
+        if (oldClanName == null || newClanName == null) return 0;
+        Clan oldClan = clanManager.getClan(oldClanName);
+        if (oldClan == null) {
+            context.getSource().sendError(Text.literal("Clan not found!"));
+            return 0;
+        }
+        if (newClanName.contains(" ")) {
+            context.getSource().sendError(Text.literal("Clan names must not contain spaces!"));
+            return 0;
+        }
+        if (newClanName.length() < 3 || newClanName.length() > 16) {
+            context.getSource().sendMessage(Text.literal("Warning: Your proposed new clan name will override length defaults!").formatted(Formatting.YELLOW));
+        }
+
+        boolean clanRenamed = clanManager.changeName(oldClanName, newClanName);
+        if (clanRenamed) {
+            context.getSource().sendFeedback(() -> Text.literal("Successfully renamed " + oldClanName + " to " + newClanName), true);
+            return 1;
+        } else {
+            context.getSource().sendError(Text.literal("Clan " + newClanName + " already exists, or " + newClanName + " isn't an allowed name!"));
+            return 0;
+        }
     }
 
     private int executeDelete(CommandContext<ServerCommandSource> context) {

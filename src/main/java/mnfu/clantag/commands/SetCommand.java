@@ -40,6 +40,10 @@ public class SetCommand {
                                 })
                                 .executes(this::executeColor)
                         )
+                        .executes(context -> {
+                            context.getSource().sendError(Text.literal("Usage: /clan set color <colorName | hexCode>"));
+                            return 0;
+                        })
                 )
                 .then(CommandManager.literal("access")
                         .then(CommandManager.argument("joinPolicy", StringArgumentType.word())
@@ -53,14 +57,23 @@ public class SetCommand {
                                 .executes(this::executeAccess)
                         )
                         .executes(context -> {
-                            context.getSource().sendError(Text.literal("Usage: /clan set access <open|invite_only|toggle>"));
+                            context.getSource().sendError(Text.literal("Usage: /clan set access <open | invite_only | toggle>"));
+                            return 0;
+                        })
+                )
+                .then(CommandManager.literal("name")
+                        .then(CommandManager.argument("newClanName", StringArgumentType.greedyString())
+                                .executes(this::executeName)
+                        )
+                        .executes(context -> {
+                            context.getSource().sendError(Text.literal("Usage: /clan set name <newClanName>"));
                             return 0;
                         })
                 )
 
                 // default response
                 .executes(context -> {
-                    context.getSource().sendError(Text.literal("Valid subcommands: color, access"));
+                    context.getSource().sendError(Text.literal("Valid subcommands: color, access, name"));
                     return 0;
                 });
     }
@@ -69,7 +82,10 @@ public class SetCommand {
         ServerPlayerEntity executor = context.getSource().getPlayer();
         if (executor == null) return 0;
         Clan clan = clanManager.getPlayerClan(executor.getUuid());
-        if (clan == null) return 0;
+        if (clan == null) {
+            context.getSource().sendError(Text.literal("You are not in a clan!"));
+            return 0;
+        }
         if (!clan.leader().equals(executor.getUuid())) {
             context.getSource().sendError(Text.literal("You must be a clan leader to use this command!"));
             return 0;
@@ -126,7 +142,10 @@ public class SetCommand {
         ServerPlayerEntity executor = context.getSource().getPlayer();
         if (executor == null) return 0;
         Clan clan = clanManager.getPlayerClan(executor.getUuid());
-        if (clan == null) return 0;
+        if (clan == null) {
+            context.getSource().sendError(Text.literal("You are not in a clan!"));
+            return 0;
+        }
         if (!clan.leader().equals(executor.getUuid())) {
             context.getSource().sendError(Text.literal("You must be a clan leader to use this command!"));
             return 0;
@@ -145,7 +164,7 @@ public class SetCommand {
         } else if (policy.equals("inviteonly") || policy.equals("invite")) {
             newPolicy = JoinPolicy.INVITE_ONLY;
         } else {
-            context.getSource().sendError(Text.literal(policy + " is not a valid option. Usage: /clan set access <open|invite_only|toggle>"));
+            context.getSource().sendError(Text.literal(policy + " is not a valid option. Usage: /clan set access <open | invite_only | toggle>"));
             return 0;
         }
 
@@ -175,5 +194,46 @@ public class SetCommand {
     private MutableText accessText(boolean closed) {
         return Text.literal(closed ? "Invite Only" : "Open")
                 .formatted(closed ? Formatting.RED : Formatting.GREEN);
+    }
+
+    private int executeName(CommandContext<ServerCommandSource> context) {
+        ServerPlayerEntity executor = context.getSource().getPlayer();
+        if (executor == null) return 0;
+        Clan clan = clanManager.getPlayerClan(executor.getUuid());
+        if (clan == null) {
+            context.getSource().sendError(Text.literal("You are not in a clan!"));
+            return 0;
+        }
+        if (!clan.leader().equals(executor.getUuid())) {
+            context.getSource().sendError(Text.literal("You must be a clan leader to use this command!"));
+            return 0;
+        }
+
+        String newClanName = StringArgumentType.getString(context, "newClanName");
+        if (newClanName.contains(" ")) {
+            context.getSource().sendError(Text.literal("Clan names must not contain spaces!"));
+            return 0;
+        }
+        if (newClanName.length() < 3 || newClanName.length() > 16) {
+            context.getSource().sendError(Text.literal("Clan names must be 3-16 characters in length!"));
+            return 0;
+        }
+
+        boolean clanRenamed = clanManager.changeName(clan.name(), newClanName);
+        if (clanRenamed) {
+            TextColor clanTextColor = TextColor.parse(clan.hexColor()).getOrThrow();
+            MutableText message = Text.literal("Updated clan name from ")
+                    .formatted(Formatting.GRAY)
+                    .append(Text.literal(clan.name()).setStyle(Style.EMPTY.withColor(clanTextColor)))
+                    .append(Text.literal(" to ").formatted(Formatting.GRAY))
+                    .append(Text.literal(newClanName).setStyle(Style.EMPTY.withColor(clanTextColor)))
+                    .append(Text.literal("!").formatted(Formatting.GRAY));
+
+            context.getSource().sendMessage(message);
+            return 1;
+        } else {
+            context.getSource().sendError(Text.literal("Clan " + newClanName + " already exists, or " + newClanName + " isn't an allowed name!"));
+            return 0;
+        }
     }
 }

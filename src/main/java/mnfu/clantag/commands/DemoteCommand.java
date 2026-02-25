@@ -50,7 +50,10 @@ public class DemoteCommand {
         ServerPlayerEntity executor = context.getSource().getPlayer();
         if (executor == null) return 0;
         Clan clan = clanManager.getPlayerClan(executor.getUuid());
-        if (clan == null) return 0;
+        if (clan == null) {
+            context.getSource().sendError(Text.literal("You are not in a clan!"));
+            return 0;
+        }
         if (!clan.leader().equals(executor.getUuid())) {
             context.getSource().sendError(Text.literal("You must be a clan leader to use this command!"));
             return 0;
