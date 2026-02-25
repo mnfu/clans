@@ -181,11 +181,6 @@ public class InviteCommand {
             return 0;
         }
 
-        if (!inviteManager.hasInvite(executorUuid, clanName)) {
-            context.getSource().sendError(Text.literal("You don't have an invite to " + clanName + "!"));
-            return 0;
-        }
-
         Clan clan = clanManager.getClan(clanName);
         if (clan == null) {
             context.getSource().sendError(Text.literal("That clan no longer exists!"));
@@ -193,7 +188,12 @@ public class InviteCommand {
             return 0;
         }
 
-        clanManager.addMember(clanName, executorUuid);
+        if (!inviteManager.hasInvite(executorUuid, clan.name())) {
+            context.getSource().sendError(Text.literal("You don't have an invite to " + clanName + "!"));
+            return 0;
+        }
+
+        clanManager.addMember(clan.name(), executorUuid);
 
         PlayerManager pm = context.getSource().getServer().getPlayerManager();
         for (UUID member : clan.members()) {
@@ -225,12 +225,20 @@ public class InviteCommand {
         String clanName = StringArgumentType.getString(context, "clanName");
         UUID executorUuid = executor.getUuid();
 
-        if (!inviteManager.hasInvite(executorUuid, clanName)) {
+        Clan clan = clanManager.getClan(clanName);
+        if (clan == null) {
+            // clean up stale invite even if the clan no longer exists
+            inviteManager.removeInvite(executorUuid, clanName);
+            context.getSource().sendError(Text.literal("That clan no longer exists!"));
+            return 0;
+        }
+
+        if (!inviteManager.hasInvite(executorUuid, clan.name())) {
             context.getSource().sendError(Text.literal("You don't have an invite to " + clanName + "!"));
             return 0;
         }
 
-        inviteManager.removeInvite(executorUuid, clanName);
+        inviteManager.removeInvite(executorUuid, clan.name());
 
         context.getSource().sendMessage(Text.literal("Declined invite to " + clanName + ".").formatted(Formatting.GRAY));
 
