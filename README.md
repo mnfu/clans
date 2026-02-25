@@ -7,61 +7,68 @@
 - Offline Java Player support for all commands
 - Offline Bedrock Player support for all commands - bedrock players must join the server at least once for offline support
 - Placeholders via https://github.com/Patbox/TextPlaceholderAPI
+- Permissions via https://github.com/LuckPerms/LuckPerms
+
+## Requires
+- LuckPerms: https://luckperms.net/download
+
+---
 
 ## Placeholders
 Currently the default value is not configurable, as this was made for a specific server, but it may be in the future.
-- `%clantag:player_clan_name%` - in the context of a player, this evaluates to their colorless clan name (White)
-- `%clantag:player_clan_name_colored%` - in the context of a player, this evaluates to their colored clan name
+
+| Placeholder | Description |
+|-------------|-------------|
+| `%clantag:player_clan_name%` | Evaluates to a player's colorless clan name (white) |
+| `%clantag:player_clan_name_colored%` | Evaluates to a player's colored clan name |
+
+---
 
 ## Commands - `Updated as of 1.1.0-dev`
-`/clan` - base command.
 
 ### Regular Commands
 
-`/clan create <clanName>` - creates a clan if it doesn't already exist, the name is allowed, and you are not in a clan.
+| Command | Description |
+|---------|-------------|
+| `/clan` | Base command. |
+| `/clan create <clanName>` | Creates a clan if it doesn't already exist, the name is allowed, and you are not in a clan. |
+| `/clan info <clanName>` | Shows info about a certain clan. If blank, attempts to use your clan. |
+| `/clan invites` | Views your current clan invites in a neat list to accept/decline. |
+| `/clan accept <clanName>` | Alternative to clicking in chat to accept an invite. |
+| `/clan decline <clanName>` | Alternative to clicking in chat to decline an invite. |
+| `/clan join <clanName>` | Joins a clan if it is open to joins. |
+| `/clan leave` | Leaves your current clan. If you are the leader with no other members, disbands the clan. |
 
-`/clan info <clanName>` - shows info about a certain clan. if clanName is left blank, instead attempts to use your clan.
+### Clan Officer Commands - Restricted to Officers and Above
 
-`/clan invites` - views your current clan invites in a neat list to accept/deny.
+| Command | Description |
+|---------|-------------|
+| `/clan invite <playerName>` | Invites a player to your clan. |
+| `/clan kick <playerName>` | Kicks a player from your clan. |
 
-`/clan accept <clanName>` - alternative to clicking in chat to accept an invite.
+### Clan Leader Commands - Restricted to Leaders
 
-`/clan decline <clanName>` - alternative to clicking in chat to decline an invite.
+| Command                                        | Description                                             |
+|------------------------------------------------|---------------------------------------------------------|
+| `/clan promote <playerName>`                   | Promotes a player to Officer rank.                      |
+| `/clan demote <playerName>`                    | Demotes a player to Member rank.                        |
+| `/clan disband`                                | Sends a confirmation message for deletion.              |
+| `/clan disband confirm`                        | Deletes your clan directly.                             |
+| `/clan set color <colorName/hexCode>`          | Changes the color code of your clan.                    |
+| `/clan set access <open\|invite_only\|toggle>` | Changes your clan’s access state. |
+| `/clan set name <newClanName>`                 | Changes the name of your clan if allowed and available. |
+| `/clan transfer <playerName>`                  | Transfers clan ownership to a member.                   |
 
-`/clan join <clanName` - joins a clan if it is open to joins.
+### Admin Commands - Restricted to OP/Console
 
-`/clan leave` - leaves your current clan. If you are a leader of a clan with no other members, this just disbands the clan.
-
-### Clan Leader Commands - Only work for clan leaders (some also only show up for clan leaders)
-
-`/clan invite <playerName>` - invites a player to your clan.
-
-`/clan kick <playerName>` - kicks a player from your clan.
-
-`/clan disband` - sends a message to confirm deletion.
-
-`/clan disband confirm` - deletes your clan (you can run this directly, there is no check that you executed the prior).
-
-`/clan set color <colorName/hexCode>` - changes the color code of your clan.
-
-`/clan set access <open|invite_only|toggle>` - changes the access state of your clan between being open or invite only.
-
-`/clan transfer <playerName>` - transfers clan ownership to player if they are a member of your clan.
-
-### Admin Commands - Currently restricted to level 4 operators / console
-
-`/clan admin` - base admin command.
-
-`/clan admin add <playerName> <clanName>` - adds player to the clan if it exists and they are not in one already.
-
-`/clan admin remove <playerName> <clanName>` - removes player from the clan if it exists and they are in it.
-
-`/clan admin delete <clanName>` - deletes clan if it exists.
-
-`/clan admin transfer <playerName> <clanName>` - transfers clan ownership to player if the clan exists and they are a member of it.
-
-`/clan admin reload` - reloads the clans from disk (clans.json). usually useful for manual edits to that file (be careful).
-
-`/clan admin cache clear` - clears the MojangAPI calls cache. usually not very useful outside of very specific situations.
-
-
+| Command                                         | Description                                                          | Permission Node |
+|-------------------------------------------------|----------------------------------------------------------------------|------|
+| `/clan admin`                                   | Base admin command.| `N/A`|
+| `/clan admin *`                                 | Grants access to **all admin subcommands**. Does **not** require `/clan admin` itself.| `clantag.admin.*` |
+| `/clan admin add <playerName> <clanName>`       | Adds a player to a clan if it exists and they are not in one already. | `clantag.admin.add`|
+| `/clan admin remove <playerName> <clanName>`    | Removes a player from a clan if they are in it.| `clantag.admin.remove`|
+| `/clan admin delete <clanName>`                 | Deletes a clan if it exists.| `clantag.admin.delete`|
+| `/clan admin rename <"clanName"> <newClanName>` | Renames a clan if allowed and not taken.| `clantag.admin.rename`|
+| `/clan admin transfer <playerName> <clanName>`  | Transfers clan ownership to a member.| `clantag.admin.transfer`|
+| `/clan admin reload`                            | Reloads clans from disk (`clans.json`).| `clantag.admin.reload`|
+| `/clan admin cache clear`                       | Clears the MojangAPI cache.| `clantag.admin.cache`|
