@@ -4,39 +4,22 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.HoverEvent;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
 public class HelpCommand {
 
-    private final Map<UUID, Long> cooldowns = new HashMap<>();
-    private static final long COOLDOWN_MS = 150; // 0.15 second cooldown
-    private static final long CLEANUP_MS = 60000; // 60 second cleanup
+    private final MutableText generalMessage;
+    private final MutableText manageMessage;
+    private final MutableText adminMessage;
 
-    private boolean cooldown(ServerCommandSource source) {
-        ServerPlayerEntity player = source.getPlayer();
-        if (player == null) return false;
-        UUID playerId = player.getUuid();
-        long now = System.currentTimeMillis();
-
-        cooldowns.entrySet().removeIf(entry -> now - entry.getValue() > CLEANUP_MS);
-
-        Long lastClick = cooldowns.get(playerId);
-        if (lastClick != null && now - lastClick < COOLDOWN_MS) {
-            source.sendError(Text.literal("Please wait before clicking again"));
-            return true;
-        }
-
-        cooldowns.put(playerId, now);
-        return false;
+    public HelpCommand() {
+        generalMessage = buildGeneralMessage();
+        manageMessage = buildManageMessage();
+        adminMessage = buildAdminMessage();
     }
 
     public LiteralArgumentBuilder<ServerCommandSource> build() {
@@ -49,9 +32,24 @@ public class HelpCommand {
 
     // HELP PAGE FOR GENERAL COMMANDS
     public int executeGeneral(CommandContext<ServerCommandSource> context) {
-        if (cooldown(context.getSource())) return 0;
-        MutableText message = Text.empty();
+        context.getSource().sendMessage(generalMessage);
+        return 1;
+    }
 
+    // HELP PAGE FOR MANAGEMENT COMMANDS
+    private int executeManage(CommandContext<ServerCommandSource> context) {
+        context.getSource().sendMessage(manageMessage);
+        return 1;
+    }
+
+    // HELP PAGE FOR ADMIN COMMANDS
+    private int executeAdmin(CommandContext<ServerCommandSource> context) {
+        context.getSource().sendMessage(adminMessage);
+        return 1;
+    }
+
+    public MutableText buildGeneralMessage () {
+        MutableText message = Text.empty();
         message.append(Text.literal("[ General Commands ]").formatted(Formatting.WHITE)).append("\n");
         message.append(Text.literal("/clan help [pageName]").formatted(Formatting.YELLOW)).append(" - Shows a help menu page (defaults to this page if [pageName] isn't chosen)").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan create <clanName>").formatted(Formatting.YELLOW)).append(" - Creates a clan if it doesn't already exist").formatted(Formatting.GRAY).append("\n");
@@ -75,15 +73,11 @@ public class HelpCommand {
                         .withHoverEvent(new HoverEvent.ShowText(Text.literal("Click to view admin commands"))))
         );
         message.append("\n");
-        context.getSource().sendMessage(message);
-        return 1;
+        return message;
     }
 
-    // HELP PAGE FOR MANAGEMENT COMMANDS
-    private int executeManage(CommandContext<ServerCommandSource> context) {
-        if (cooldown(context.getSource())) return 0;
+    public MutableText buildManageMessage () {
         MutableText message = Text.empty();
-
         message.append(Text.literal("[ Management Commands ]").formatted(Formatting.WHITE)).append("\n");
         message.append(Text.literal("/clan invite <playerName>").formatted(Formatting.YELLOW)).append(" - Invites <playerName> to your clan").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan kick <playerName>").formatted(Formatting.YELLOW)).append(" - Kicks <playerName> from your clan").formatted(Formatting.GRAY).append("\n");
@@ -94,7 +88,6 @@ public class HelpCommand {
         message.append(Text.literal("/clan set access <open|invite_only|toggle>").formatted(Formatting.YELLOW)).append(" - Sets your clan access to open or invite only").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan set name <newClanName>").formatted(Formatting.YELLOW)).append(" - Sets your clan name to <newClanName> if it is available").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan transfer <playerName>").formatted(Formatting.YELLOW)).append(" - Transfers clan ownership to <playerName>").formatted(Formatting.GRAY).append("\n");
-
         message.append(Text.literal("[General Help Page]")
                 .styled(style -> style
                         .withColor(Formatting.GOLD)
@@ -109,15 +102,11 @@ public class HelpCommand {
                         .withHoverEvent(new HoverEvent.ShowText(Text.literal("Click to view admin commands"))))
         );
         message.append("\n");
-        context.getSource().sendMessage(message);
-        return 1;
+        return message;
     }
 
-    // HELP PAGE FOR ADMIN COMMANDS
-    private int executeAdmin(CommandContext<ServerCommandSource> context) {
-        if (cooldown(context.getSource())) return 0;
+    public MutableText buildAdminMessage () {
         MutableText message = Text.empty();
-
         message.append(Text.literal("[ Admin Commands ]").formatted(Formatting.WHITE)).append("\n");
         message.append(Text.literal("/clan admin add <playerName> <clanName>").formatted(Formatting.YELLOW)).append(" - Adds <playerName> to a clan").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan admin remove <playerName> <clanName>").formatted(Formatting.YELLOW)).append(" - Removes <playerName> from a clan").formatted(Formatting.GRAY).append("\n");
@@ -126,7 +115,6 @@ public class HelpCommand {
         message.append(Text.literal("/clan admin transfer <playerName> <clanName>").formatted(Formatting.YELLOW)).append(" - Transfers clan ownership to <playerName>").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan admin reload").formatted(Formatting.YELLOW)).append(" - Reloads clans.json from disk").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan admin cache clear").formatted(Formatting.YELLOW)).append(" - Clears the MojangAPI Cache").formatted(Formatting.GRAY).append("\n");
-
         message.append(Text.literal("[General Help Page]")
                 .styled(style -> style
                         .withColor(Formatting.GOLD)
@@ -141,8 +129,6 @@ public class HelpCommand {
                         .withHoverEvent(new HoverEvent.ShowText(Text.literal("Click to view management commands"))))
         );
         message.append("\n");
-        context.getSource().sendMessage(message);
-        return 1;
+        return message;
     }
-
 }

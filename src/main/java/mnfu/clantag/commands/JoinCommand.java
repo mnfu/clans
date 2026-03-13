@@ -15,6 +15,7 @@ import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 
+import java.util.Map;
 import java.util.UUID;
 
 public class JoinCommand {
@@ -28,8 +29,8 @@ public class JoinCommand {
         return CommandManager.literal("join")
                 .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                         .suggests((context, builder) -> {
-                            for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
-                                builder.suggest(canonicalName);
+                            for (Map.Entry<String, Clan> entry : clanManager.getClansMap().entrySet()) {
+                                if (!entry.getValue().isClosed()) builder.suggest(entry.getKey());
                             }
                             return builder.buildFuture();
                         })
