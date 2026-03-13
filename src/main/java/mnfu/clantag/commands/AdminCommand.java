@@ -356,7 +356,7 @@ public class AdminCommand {
             return 0;
         }
         if (newClanName.length() < 3 || newClanName.length() > 16) {
-            context.getSource().sendMessage(Text.literal("Warning: Your proposed new clan name will override length defaults!").formatted(Formatting.YELLOW));
+            context.getSource().sendMessage(Text.literal("Warning: Proposed new clan name will override length limits!").formatted(Formatting.YELLOW));
         }
 
         boolean clanRenamed = clanManager.changeName(oldClanName, newClanName);

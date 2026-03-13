@@ -53,7 +53,7 @@ public class HelpCommand {
         message.append(Text.literal("[ General Commands ]").formatted(Formatting.WHITE)).append("\n");
         message.append(Text.literal("/clan help [pageName]").formatted(Formatting.YELLOW)).append(" - Shows a help menu page (defaults to this page if [pageName] isn't chosen)").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan create <clanName>").formatted(Formatting.YELLOW)).append(" - Creates a clan if it doesn't already exist").formatted(Formatting.GRAY).append("\n");
-        message.append(Text.literal("/clan info <clanName>").formatted(Formatting.YELLOW)).append(" - Shows info about a clan, and if <clanName> is blank, it shows your clan").formatted(Formatting.GRAY).append("\n");
+        message.append(Text.literal("/clan info [name|player] <clanName|playerName>").formatted(Formatting.YELLOW)).append(" - Shows info about a clan, defaults to your clan if no arguments given").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan invites").formatted(Formatting.YELLOW)).append(" - Displays your current clan invites to accept/decline").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan accept <clanName>").formatted(Formatting.YELLOW)).append(" - Accepts a clan invite").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan decline <clanName>").formatted(Formatting.YELLOW)).append(" - Declines a clan invite").formatted(Formatting.GRAY).append("\n");
@@ -85,7 +85,7 @@ public class HelpCommand {
         message.append(Text.literal("/clan demote <playerName>").formatted(Formatting.YELLOW)).append(" - Demotes a player in the clan rank hierarchy").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan disband [confirm]").formatted(Formatting.YELLOW)).append(" - Facilitates the deletion of your clan").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan set color <colorName|hexCode>").formatted(Formatting.YELLOW)).append(" - Sets your clan color (supports \"WHITE\" or #FFFFFF or FFFFFF formats)").formatted(Formatting.GRAY).append("\n");
-        message.append(Text.literal("/clan set access <open|invite_only|toggle>").formatted(Formatting.YELLOW)).append(" - Sets your clan access to open or invite only").formatted(Formatting.GRAY).append("\n");
+        message.append(Text.literal("/clan set access [open|invite_only|toggle]").formatted(Formatting.YELLOW)).append(" - Sets your clan access to open or invite only").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan set name <newClanName>").formatted(Formatting.YELLOW)).append(" - Sets your clan name to <newClanName> if it is available").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("/clan transfer <playerName>").formatted(Formatting.YELLOW)).append(" - Transfers clan ownership to <playerName>").formatted(Formatting.GRAY).append("\n");
         message.append(Text.literal("[General Help Page]")

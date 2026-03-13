@@ -14,12 +14,14 @@ import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static mnfu.clantag.commands.CommandUtils.getPlayerName;
+import static mnfu.clantag.commands.CommandUtils.getUuid;
 
 public class InfoCommand {
     private final ClanManager clanManager;
@@ -31,14 +33,27 @@ public class InfoCommand {
     public LiteralArgumentBuilder<ServerCommandSource> build() {
         return CommandManager.literal("info")
                 .executes(this::executeForSelf)
-                .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
-                        .suggests((context, builder) -> {
-                            for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
-                                builder.suggest(canonicalName);
-                            }
-                            return builder.buildFuture();
-                        })
-                        .executes(this::executeForClanName));
+                .then(CommandManager.literal("name")
+                        .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
+                                .suggests((context, builder) -> {
+                                    for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
+                                        builder.suggest(canonicalName);
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .executes(this::executeForClanName)
+                        )
+                )
+                .then(CommandManager.literal("player")
+                        .then(CommandManager.argument("playerName", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    Collection<String> onlinePlayers = context.getSource().getPlayerNames();
+                                    onlinePlayers.forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(this::executeForPlayer)
+                        )
+                );
     }
 
     private int executeForSelf(CommandContext<ServerCommandSource> context) {
@@ -69,6 +84,28 @@ public class InfoCommand {
         }
 
         displayClanInfo(context, clan);
+        return 1;
+    }
+
+    private int executeForPlayer(CommandContext<ServerCommandSource> context) {
+        String playerName = StringArgumentType.getString(context, "playerName");
+
+        getUuid(context, playerName).thenAccept(optUuid -> {
+            UUID playerUuid = optUuid.orElse(null);
+            if (playerUuid == null) {
+                context.getSource().sendError(Text.literal("Player not found!"));
+                return;
+            }
+
+            Clan clan = clanManager.getPlayerClan(playerUuid);
+            if (clan == null) {
+                context.getSource().sendError(Text.literal("This player is not in a clan."));
+                return;
+            }
+
+            displayClanInfo(context, clan);
+        });
+
         return 1;
     }
 
