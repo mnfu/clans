@@ -222,10 +222,26 @@ public class ClanManager {
         return clans.size();
     }
 
+    /**
+     * WARNING: Returns actual hashmap. Try to use ClanManager for modifications instead of directly modifying things.
+     * @return clans Hashmap (String, Clan)
+     */
+    public Map<String, Clan> getClansMap() {
+        return clans;
+    }
+
+    /**
+     * WARNING: Returns actual clan records. Try to use ClanManager for modifications instead of directly modifying things.
+     * @return clans Hashmap values (each value is a clan record object)
+     */
     public Collection<Clan> getAllClans() {
         return clans.values();
     }
 
+    /**
+     * WARNING: Returns actual keyset. Try to use ClanManager for modifications instead of directly modifying things.
+     * @return clans Hashmap keySet (each key is a canonical clan name as a string)
+     */
     public Collection<String> getAllClansCanonicalNames() {
         return clans.keySet();
     }
