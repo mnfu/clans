@@ -52,8 +52,8 @@ public class AdminCommand {
                                 })
                                 .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                                         .suggests((context, builder) -> {
-                                            for (Clan c : clanManager.getAllClans()) {
-                                                builder.suggest(c.name());
+                                            for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
+                                                builder.suggest(canonicalName);
                                             }
                                             return builder.buildFuture();
                                         })
@@ -82,8 +82,8 @@ public class AdminCommand {
                                 })
                                 .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                                         .suggests((context, builder) -> {
-                                            for (Clan c : clanManager.getAllClans()) {
-                                                builder.suggest(c.name());
+                                            for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
+                                                builder.suggest(canonicalName);
                                             }
                                             return builder.buildFuture();
                                         })
@@ -112,8 +112,8 @@ public class AdminCommand {
                                 })
                                 .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                                         .suggests((context, builder) -> {
-                                            for (Clan c : clanManager.getAllClans()) {
-                                                builder.suggest(c.name());
+                                            for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
+                                                builder.suggest(canonicalName);
                                             }
                                             return builder.buildFuture();
                                         })
@@ -134,8 +134,8 @@ public class AdminCommand {
                         .requires(source -> hasPermission(source, "clantag.admin.rename"))
                         .then(CommandManager.argument("clanName", StringArgumentType.string())
                                 .suggests((context, builder) -> {
-                                    for (Clan c : clanManager.getAllClans()) {
-                                        builder.suggest(c.name());
+                                    for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
+                                        builder.suggest(canonicalName);
                                     }
                                     return builder.buildFuture();
                                 })
@@ -158,8 +158,8 @@ public class AdminCommand {
                         .requires(source -> hasPermission(source, "clantag.admin.delete"))
                         .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                                 .suggests((context, builder) -> {
-                                    for (Clan c : clanManager.getAllClans()) {
-                                        builder.suggest(c.name());
+                                    for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
+                                        builder.suggest(canonicalName);
                                     }
                                     return builder.buildFuture();
                                 })

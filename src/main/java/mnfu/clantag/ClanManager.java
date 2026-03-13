@@ -226,6 +226,10 @@ public class ClanManager {
         return clans.values();
     }
 
+    public Collection<String> getAllClansCanonicalNames() {
+        return clans.keySet();
+    }
+
     public boolean load() {
         if (!file.exists()) return false;
 

@@ -14,7 +14,6 @@ import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
@@ -34,9 +33,8 @@ public class InfoCommand {
                 .executes(this::executeForSelf)
                 .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                         .suggests((context, builder) -> {
-                            Collection<Clan> clans = clanManager.getAllClans();
-                            for (Clan c : clans) {
-                                builder.suggest(c.name());
+                            for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
+                                builder.suggest(canonicalName);
                             }
                             return builder.buildFuture();
                         })
