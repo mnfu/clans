@@ -100,6 +100,8 @@ public class SetCommand {
             newColor = "#" + Integer.toHexString(formatting.getColorValue()).toUpperCase(Locale.ROOT);
         } else if (newColor.matches("(?i)^#?[0-9a-f]{1,6}$")) {
             newColor = "#" + newColor.replaceFirst("^#", "").toUpperCase(Locale.ROOT);
+        } else if ("reset".equalsIgnoreCase(newColor)) {
+            newColor = "#" + Integer.toHexString(Formatting.WHITE.getColorValue()).toUpperCase(Locale.ROOT); // Reset to white
         } else {
             context.getSource().sendError(Text.literal(newColor + " is not a valid hex color or minecraft color."));
             return 0;

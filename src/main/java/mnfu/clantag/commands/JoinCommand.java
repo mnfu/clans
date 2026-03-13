@@ -28,8 +28,8 @@ public class JoinCommand {
         return CommandManager.literal("join")
                 .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
                         .suggests((context, builder) -> {
-                            for (Clan c : clanManager.getAllClans()) {
-                                if (!c.isClosed()) builder.suggest(c.name());
+                            for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
+                                builder.suggest(canonicalName);
                             }
                             return builder.buildFuture();
                         })
