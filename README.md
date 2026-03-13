@@ -28,16 +28,17 @@ Currently the default value is not configurable, as this was made for a specific
 
 ### Regular Commands
 
-| Command | Description |
-|---------|-------------|
-| `/clan` | Base command. |
-| `/clan create <clanName>` | Creates a clan if it doesn't already exist, the name is allowed, and you are not in a clan. |
-| `/clan info <clanName>` | Shows info about a certain clan. If blank, attempts to use your clan. |
-| `/clan invites` | Views your current clan invites in a neat list to accept/decline. |
-| `/clan accept <clanName>` | Alternative to clicking in chat to accept an invite. |
-| `/clan decline <clanName>` | Alternative to clicking in chat to decline an invite. |
-| `/clan join <clanName>` | Joins a clan if it is open to joins. |
-| `/clan leave` | Leaves your current clan. If you are the leader with no other members, disbands the clan. |
+| Command                    | Description                                                                                 |
+|----------------------------|---------------------------------------------------------------------------------------------|
+| `/clan`                    | Base command.                                                                               |
+| `/clan help [pageName]`    | Shows a help menu page (defaults to this page if pageName isn't chosen).                    |
+| `/clan create <clanName>`  | Creates a clan if it doesn't already exist, the name is allowed, and you are not in a clan. |
+| `/clan info <clanName>`    | Shows info about a certain clan. If blank, attempts to use your clan.                       |
+| `/clan invites`            | Views your current clan invites in a neat list to accept/decline.                           |
+| `/clan accept <clanName>`  | Alternative to clicking in chat to accept an invite.                                        |
+| `/clan decline <clanName>` | Alternative to clicking in chat to decline an invite.                                       |
+| `/clan join <clanName>`    | Joins a clan if it is open to joins.                                                        |
+| `/clan leave`              | Leaves your current clan. If you are the leader with no other members, disbands the clan.   |
 
 ### Clan Officer Commands - Restricted to Officers and Above
 
@@ -52,10 +53,9 @@ Currently the default value is not configurable, as this was made for a specific
 |------------------------------------------------|---------------------------------------------------------|
 | `/clan promote <playerName>`                   | Promotes a player to Officer rank.                      |
 | `/clan demote <playerName>`                    | Demotes a player to Member rank.                        |
-| `/clan disband`                                | Sends a confirmation message for deletion.              |
-| `/clan disband confirm`                        | Deletes your clan directly.                             |
+| `/clan disband [confirm]`                      | Deletes a clan (if confirmed).                          |
 | `/clan set color <colorName/hexCode>`          | Changes the color code of your clan.                    |
-| `/clan set access <open\|invite_only\|toggle>` | Changes your clan’s access state. |
+| `/clan set access <open\|invite_only\|toggle>` | Changes your clan’s access state.                       |
 | `/clan set name <newClanName>`                 | Changes the name of your clan if allowed and available. |
 | `/clan transfer <playerName>`                  | Transfers clan ownership to a member.                   |
 

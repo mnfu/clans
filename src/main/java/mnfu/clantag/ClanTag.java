@@ -76,6 +76,8 @@ public class ClanTag implements ModInitializer {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 
             var baseCommand = CommandManager.literal("clan");
+            HelpCommand helpCommandClass = new HelpCommand();
+            var helpCommand = new HelpCommand().build();
             var adminCommand = new AdminCommand(clanManager).build();
             var infoCommand = new InfoCommand(clanManager).build();
 
@@ -96,6 +98,7 @@ public class ClanTag implements ModInitializer {
             var demoteCommand = new DemoteCommand(clanManager).build();
 
             dispatcher.register(baseCommand
+                    .then(helpCommand)
                     .then(adminCommand)
                     .then(setCommand)
                     .then(infoCommand)
@@ -111,10 +114,7 @@ public class ClanTag implements ModInitializer {
                     .then(transferCommand)
                     .then(promoteCommand)
                     .then(demoteCommand)
-                    .executes(context -> {
-                        context.getSource().sendFeedback(()->Text.literal("Command help message not implemented, WIP!"), false);
-                        return 1;
-                    })
+                    .executes(helpCommandClass::executeGeneral)
             );
         });
     }
