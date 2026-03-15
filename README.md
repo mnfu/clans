@@ -1,4 +1,8 @@
 # ClanTag
+<a href="https://github.com/mnfu/clans"><img alt="github" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/github_vector.svg"></a>
+<a href="https://modrinth.com/mod/fabric-api"><img alt="fabric-api" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/requires/fabric-api_vector.svg"></a>
+<a href="https://modrinth.com/mod/fabric-api"><img alt="fabric-api" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3.3.0/assets/cozy/built-with/java21_vector.svg"></a>
+
 
 ### What is it?
 - A fabric mod designed to allow cosmetic groupings of people via "clans"
