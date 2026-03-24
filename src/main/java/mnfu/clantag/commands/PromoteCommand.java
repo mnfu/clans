@@ -5,10 +5,10 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -22,13 +22,13 @@ public class PromoteCommand {
         this.clanManager = clanManager;
     }
 
-    public LiteralArgumentBuilder<ServerCommandSource> build() {
-        return CommandManager.literal("promote")
-                .then(CommandManager.argument("playerName", StringArgumentType.greedyString())
+    public LiteralArgumentBuilder<CommandSourceStack> build() {
+        return Commands.literal("promote")
+                .then(Commands.argument("playerName", StringArgumentType.greedyString())
                         .suggests((context, builder) -> {
-                            ServerPlayerEntity player = context.getSource().getPlayer();
+                            ServerPlayer player = context.getSource().getPlayer();
                             if (player == null) return builder.buildFuture();
-                            Clan clan = clanManager.getPlayerClan(player.getUuid());
+                            Clan clan = clanManager.getPlayerClan(player.getUUID());
                             if (clan == null) return builder.buildFuture();
                             CompletableFuture<?>[] nameFutures = clan.members().stream()
                                     .filter(uuid -> !uuid.equals(clan.leader()))
@@ -41,45 +41,45 @@ public class PromoteCommand {
                         })
                         .executes(this::executePromote))
                 .executes(context -> {
-                    context.getSource().sendError(Text.literal("Usage: /clan promote <playerName>"));
+                    context.getSource().sendFailure(Component.literal("Usage: /clan promote <playerName>"));
                     return 1;
                 });
     }
 
-    private int executePromote(CommandContext<ServerCommandSource> context) {
-        ServerPlayerEntity executor = context.getSource().getPlayer();
+    private int executePromote(CommandContext<CommandSourceStack> context) {
+        ServerPlayer executor = context.getSource().getPlayer();
         if (executor == null) return 0;
-        Clan clan = clanManager.getPlayerClan(executor.getUuid());
+        Clan clan = clanManager.getPlayerClan(executor.getUUID());
         if (clan == null) {
-            context.getSource().sendError(Text.literal("You are not in a clan!"));
+            context.getSource().sendFailure(Component.literal("You are not in a clan!"));
             return 0;
         }
-        if (!clan.leader().equals(executor.getUuid())) {
-            context.getSource().sendError(Text.literal("You must be a clan leader to use this command!"));
+        if (!clan.leader().equals(executor.getUUID())) {
+            context.getSource().sendFailure(Component.literal("You must be a clan leader to use this command!"));
             return 0;
         }
 
         String targetName = StringArgumentType.getString(context, "playerName");
         getUuid(context, targetName).thenAccept(optUuid -> context.getSource().getServer().execute(() -> {
             if (optUuid.isEmpty()) {
-                context.getSource().sendError(Text.literal("Player not found!"));
+                context.getSource().sendFailure(Component.literal("Player not found!"));
                 return;
             }
             UUID targetUuid = optUuid.get();
             if (targetUuid.equals(clan.leader())) {
-                context.getSource().sendError(Text.literal("You cannot promote yourself!"));
+                context.getSource().sendFailure(Component.literal("You cannot promote yourself!"));
                 return;
             }
             if (!clan.members().contains(targetUuid)) {
-                context.getSource().sendError(Text.literal(targetName + " is not in your clan!"));
+                context.getSource().sendFailure(Component.literal(targetName + " is not in your clan!"));
                 return;
             }
             if (clan.officers().contains(targetUuid)) {
-                context.getSource().sendError(Text.literal(targetName + " is already an Officer!"));
+                context.getSource().sendFailure(Component.literal(targetName + " is already an Officer!"));
                 return;
             }
             clanManager.addOfficer(clan.name(), targetUuid);
-            context.getSource().sendMessage(Text.literal("Promoted " + targetName + " to an Officer!"));
+            context.getSource().sendSystemMessage(Component.literal("Promoted " + targetName + " to an Officer!"));
         }));
         return 1;
     }

@@ -3,10 +3,10 @@ package mnfu.clantag.commands;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import mnfu.clantag.ClanManager;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 
@@ -20,23 +20,23 @@ public class CreateCommand {
         this.clanManager = clanManager;
     }
 
-    public LiteralArgumentBuilder<ServerCommandSource> build() {
-        return CommandManager.literal("create")
-                .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
+    public LiteralArgumentBuilder<CommandSourceStack> build() {
+        return Commands.literal("create")
+                .then(Commands.argument("clanName", StringArgumentType.greedyString())
                         .executes(this::executeCreate)
                 );
     }
 
-    private int executeCreate(CommandContext<ServerCommandSource> context) {
-        ServerPlayerEntity executor = context.getSource().getPlayer();
+    private int executeCreate(CommandContext<CommandSourceStack> context) {
+        ServerPlayer executor = context.getSource().getPlayer();
         if (executor == null) {
-            context.getSource().sendError(Text.literal("Only players can create clans!"));
+            context.getSource().sendFailure(Component.literal("Only players can create clans!"));
             return 0;
         }
 
-        UUID executorUuid = executor.getUuid();
+        UUID executorUuid = executor.getUUID();
         if (clanManager.playerInAClan(executorUuid)) {
-            context.getSource().sendError(Text.literal(
+            context.getSource().sendFailure(Component.literal(
                     "You must leave or disband your current clan before creating a new one."
             ));
             return 0;
@@ -44,19 +44,19 @@ public class CreateCommand {
 
         String clanName = StringArgumentType.getString(context, "clanName");
         if (clanName.contains(" ")) {
-            context.getSource().sendError(Text.literal("Clan names must not contain spaces!"));
+            context.getSource().sendFailure(Component.literal("Clan names must not contain spaces!"));
             return 0;
         }
         if (clanName.length() < 3 || clanName.length() > 16) {
-            context.getSource().sendError(Text.literal("Clan names must be 3-16 characters in length!"));
+            context.getSource().sendFailure(Component.literal("Clan names must be 3-16 characters in length!"));
             return 0;
         }
 
         boolean clanCreated = clanManager.createClan(clanName, executorUuid);
         if (clanCreated) {
-            executor.sendMessage(Text.literal("Clan " + clanName + " created!"), false);
+            executor.displayClientMessage(Component.literal("Clan " + clanName + " created!"), false);
         } else {
-            context.getSource().sendError(Text.literal("Clan " + clanName + " already exists, or " + clanName + " isn't an allowed name!"));
+            context.getSource().sendFailure(Component.literal("Clan " + clanName + " already exists, or " + clanName + " isn't an allowed name!"));
         }
 
         return 1;

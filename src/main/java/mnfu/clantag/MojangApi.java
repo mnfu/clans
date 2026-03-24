@@ -2,7 +2,7 @@ package mnfu.clantag;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -153,10 +153,10 @@ public final class MojangApi {
     /**
      * Caches a currently online player’s UUID and username in {@link MojangCache}.
      *
-     * @param player the online {@link ServerPlayerEntity} to cache
+     * @param player the online {@link ServerPlayer} to cache
      */
-    public static void cachePlayer(ServerPlayerEntity player) {
-        CACHE.put(player.getUuid(), player.getName().getString());
+    public static void cachePlayer(ServerPlayer player) {
+        CACHE.put(player.getUUID(), player.getName().getString());
     }
 
     /**
