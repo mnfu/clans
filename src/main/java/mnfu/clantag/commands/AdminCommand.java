@@ -205,7 +205,7 @@ public class AdminCommand {
 
                 // default response
                 .executes(context -> {
-                    context.getSource().sendError(Text.literal("Valid subcommands: add, remove, transfer, rename, disband, cache, reload"));
+                    context.getSource().sendError(Text.literal("Valid subcommands: add, remove, transfer, rename, delete, cache, reload"));
                     return 0;
                 });
 
