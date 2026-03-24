@@ -11,11 +11,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import eu.pb4.placeholders.api.Placeholders;
 
 import java.io.File;
+import java.util.UUID;
 
 
 public class ClanTag implements ModInitializer {
@@ -53,20 +55,24 @@ public class ClanTag implements ModInitializer {
         }));
 
         // register placeholders
-        Placeholders.register(
+        Placeholders.registerServer(
                 Identifier.fromNamespaceAndPath("clantag", "player_clan_name"),
                 (ctx, arg) -> {
-                    if (!ctx.hasPlayer() || ctx.player() == null) return PlaceholderResult.invalid();
-                    Clan clan = clanManager.getPlayerClan(ctx.player().getUUID());
+                    if (!ctx.hasPlayer()) return PlaceholderResult.invalid();
+                    Player player = ctx.player();
+                    if (player == null) return PlaceholderResult.invalid();
+                    Clan clan = clanManager.getPlayerClan(player.getUUID());
                     if (clan == null) return PlaceholderResult.value(Component.literal("Avience"));
                     return PlaceholderResult.value(Component.literal(clan.name()));
                 }
         );
-        Placeholders.register(
+        Placeholders.registerServer(
                 Identifier.fromNamespaceAndPath("clantag", "player_clan_name_colored"),
                 (ctx, arg) -> {
-                    if (!ctx.hasPlayer() || ctx.player() == null) return PlaceholderResult.invalid();
-                    Clan clan = clanManager.getPlayerClan(ctx.player().getUUID());
+                    if (!ctx.hasPlayer()) return PlaceholderResult.invalid();
+                    Player player = ctx.player();
+                    if (player == null) return PlaceholderResult.invalid();
+                    Clan clan = clanManager.getPlayerClan(player.getUUID());
                     if (clan == null) return PlaceholderResult.value(Component.literal("Avience").withStyle(ChatFormatting.GRAY));
                     return PlaceholderResult.value(Component.literal(clan.name()).withColor(Integer.parseInt(clan.hexColor().substring(1), 16)));
                 }

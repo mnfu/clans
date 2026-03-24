@@ -54,7 +54,7 @@ public class CreateCommand {
 
         boolean clanCreated = clanManager.createClan(clanName, executorUuid);
         if (clanCreated) {
-            executor.displayClientMessage(Component.literal("Clan " + clanName + " created!"), false);
+            context.getSource().sendSystemMessage(Component.literal("Clan " + clanName + " created!"));
         } else {
             context.getSource().sendFailure(Component.literal("Clan " + clanName + " already exists, or " + clanName + " isn't an allowed name!"));
         }

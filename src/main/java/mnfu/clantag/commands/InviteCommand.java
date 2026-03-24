@@ -158,7 +158,7 @@ public class InviteCommand {
 
                 inviteMessage.append(declineButton);
 
-                targetPlayer.displayClientMessage(inviteMessage, false);
+                targetPlayer.sendSystemMessage(inviteMessage);
             }
         }));
 
