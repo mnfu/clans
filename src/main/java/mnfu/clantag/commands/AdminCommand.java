@@ -6,15 +6,13 @@ import com.mojang.brigadier.context.CommandContext;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
 import mnfu.clantag.MojangApi;
-import net.luckperms.api.LuckPerms;
-import net.luckperms.api.LuckPermsProvider;
-import net.luckperms.api.model.user.User;
+import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
 
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
+import net.minecraft.server.permissions.PermissionLevel;
 
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -23,9 +21,6 @@ import static mnfu.clantag.commands.CommandUtils.getUuid;
 
 public class AdminCommand {
     private final ClanManager clanManager;
-    private LuckPerms lpApi = null;
-    private static final Predicate<CommandSourceStack> OWNER_CHECK =
-            Commands.hasPermission(Commands.LEVEL_OWNERS);
 
     private final String addUsageMessage = "Usage: /clan admin add <playerName> <clanName>";
     private final String removeUsageMessage = "Usage: /clan admin remove <playerName> <clanName>";
@@ -42,7 +37,7 @@ public class AdminCommand {
         return Commands.literal("admin")
                 // add <playerName> <clanName>
                 .then(Commands.literal("add")
-                        .requires(source -> hasPermission(source, "clantag.admin.add"))
+                        .requires(Permissions.require("clantag.admin.add", PermissionLevel.ADMINS))
                         .then(Commands.argument("playerName", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     for (String n : context.getSource().getServer().getPlayerNames()) {
@@ -72,7 +67,7 @@ public class AdminCommand {
 
                 // remove <playerName> <clanName>
                 .then(Commands.literal("remove")
-                        .requires(source -> hasPermission(source, "clantag.admin.remove"))
+                        .requires(Permissions.require("clantag.admin.remove", PermissionLevel.ADMINS))
                         .then(Commands.argument("playerName", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     for (String n : context.getSource().getServer().getPlayerNames()) {
@@ -102,7 +97,7 @@ public class AdminCommand {
 
                 // transfer <playerName> <clanName>
                 .then(Commands.literal("transfer")
-                        .requires(source -> hasPermission(source, "clantag.admin.transfer"))
+                        .requires(Permissions.require("clantag.admin.transfer", PermissionLevel.ADMINS))
                         .then(Commands.argument("playerName", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     for (String n : context.getSource().getServer().getPlayerNames()) {
@@ -131,7 +126,7 @@ public class AdminCommand {
                 )
 
                 .then(Commands.literal("rename")
-                        .requires(source -> hasPermission(source, "clantag.admin.rename"))
+                        .requires(Permissions.require("clantag.admin.rename", PermissionLevel.ADMINS))
                         .then(Commands.argument("clanName", StringArgumentType.string())
                                 .suggests((context, builder) -> {
                                     for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
@@ -155,7 +150,7 @@ public class AdminCommand {
 
                 // delete <clanName> (confirm)
                 .then(Commands.literal("delete")
-                        .requires(source -> hasPermission(source, "clantag.admin.delete"))
+                        .requires(Permissions.require("clantag.admin.delete", PermissionLevel.ADMINS))
                         .then(Commands.argument("clanName", StringArgumentType.greedyString())
                                 .suggests((context, builder) -> {
                                     for (String canonicalName : clanManager.getAllClansCanonicalNames()) {
@@ -173,7 +168,7 @@ public class AdminCommand {
 
                 // reload
                 .then(Commands.literal("reload")
-                        .requires(source -> hasPermission(source, "clantag.admin.reload"))
+                        .requires(Permissions.require("clantag.admin.reload", PermissionLevel.ADMINS))
                         .executes(context -> {
                             boolean reloaded = clanManager.load();
                             if (reloaded) {
@@ -187,7 +182,7 @@ public class AdminCommand {
 
                 // cache clear
                 .then(Commands.literal("cache")
-                        .requires(source -> hasPermission(source, "clantag.admin.cache"))
+                        .requires(Permissions.require("clantag.admin.cache", PermissionLevel.ADMINS))
                         .then(Commands.literal("clear")
                                 .executes(context -> {
                                     MojangApi.clearCache();
@@ -209,30 +204,6 @@ public class AdminCommand {
                     return 0;
                 });
 
-    }
-
-    private boolean hasPermission(CommandSourceStack source, String node) {
-        if (!source.isPlayer()) { // console/other source that is non-player
-            return true;
-        }
-        ServerPlayer player = source.getPlayer();
-        if (player == null) return false;
-        UUID playerUuid = player.getUUID();
-
-        if (lpApi == null) {
-            try {
-                lpApi = LuckPermsProvider.get();
-            } catch (IllegalStateException e) {
-                // LP not ready yet, deny command
-                return false;
-            }
-        }
-
-        User user = lpApi.getUserManager().getUser(playerUuid);
-
-        boolean hasPermissionNode = user != null && user.getCachedData().getPermissionData().checkPermission(node).asBoolean();
-        boolean hasOwnerLevelOp = OWNER_CHECK.test(source); //fallback if they have no permissions
-        return hasPermissionNode || hasOwnerLevelOp;
     }
 
     private int executeAdd(CommandContext<CommandSourceStack> context) {

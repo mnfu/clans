@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import eu.pb4.placeholders.api.Placeholders;
 
 import java.io.File;
-import java.util.UUID;
 
 
 public class ClanTag implements ModInitializer {

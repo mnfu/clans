@@ -47,23 +47,21 @@ dependencies {
 
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     implementation "eu.pb4:placeholder-api:${project.placeholder_api_version}"
-    compileOnly "net.luckperms:api:${project.luckperms_version}"
     implementation("org.xerial:sqlite-jdbc:${project.sqlite_jdbc_version}")
     include("org.xerial:sqlite-jdbc:${project.sqlite_jdbc_version}")
+    include(implementation "me.lucko:fabric-permissions-api:${project.fabric_permissions_api}")
 }
 
 processResources {
     inputs.property "version", project.version
     inputs.property "minecraft_version", project.minecraft_version
     inputs.property "loader_version", project.loader_version
-    inputs.property "luckperms_version", project.luckperms_version
     filteringCharset "UTF-8"
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
                 "minecraft_version": project.minecraft_version,
-                "loader_version": project.loader_version,
-                "luckperms_version": project.luckperms_version
+                "loader_version": project.loader_version
     }
 }
 

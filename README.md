@@ -13,8 +13,7 @@
 - Placeholders via https://github.com/Patbox/TextPlaceholderAPI
 - Permissions via https://github.com/LuckPerms/LuckPerms
 
-## Requires
-- LuckPerms: https://luckperms.net/download
+If no permissions are set, admin commands default to operator level 3 (Admins)
 
 ---
 
