@@ -5,15 +5,15 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
-import net.minecraft.server.PlayerManager;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.text.TextColor;
-import net.minecraft.util.Formatting;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
+import net.minecraft.ChatFormatting;
 
 import java.util.Map;
 import java.util.UUID;
@@ -25,9 +25,9 @@ public class JoinCommand {
         this.clanManager = clanManager;
     }
 
-    public LiteralArgumentBuilder<ServerCommandSource> build() {
-        return CommandManager.literal("join")
-                .then(CommandManager.argument("clanName", StringArgumentType.greedyString())
+    public LiteralArgumentBuilder<CommandSourceStack> build() {
+        return Commands.literal("join")
+                .then(Commands.argument("clanName", StringArgumentType.greedyString())
                         .suggests((context, builder) -> {
                             for (Map.Entry<String, Clan> entry : clanManager.getClansMap().entrySet()) {
                                 if (!entry.getValue().isClosed()) builder.suggest(entry.getKey());
@@ -38,40 +38,40 @@ public class JoinCommand {
                 );
     }
 
-    private int executeJoin(CommandContext<ServerCommandSource> context) {
-        ServerPlayerEntity executor = context.getSource().getPlayer();
+    private int executeJoin(CommandContext<CommandSourceStack> context) {
+        ServerPlayer executor = context.getSource().getPlayer();
         if (executor == null) return 0;
-        Clan clan = clanManager.getPlayerClan(executor.getUuid());
+        Clan clan = clanManager.getPlayerClan(executor.getUUID());
         if (clan != null) {
-            context.getSource().sendError(Text.literal("You must leave your current clan to join a new one!"));
+            context.getSource().sendFailure(Component.literal("You must leave your current clan to join a new one!"));
             return 0;
         }
         String newClanName = StringArgumentType.getString(context, "clanName");
         Clan newClan = clanManager.getClan(newClanName);
         if (newClan == null) {
-            context.getSource().sendError(Text.literal("Clan not found!"));
+            context.getSource().sendFailure(Component.literal("Clan not found!"));
             return 0;
         }
         if (newClan.isClosed()) {
-            context.getSource().sendError(Text.literal(newClan.name() + " is currently invite only!"));
+            context.getSource().sendFailure(Component.literal(newClan.name() + " is currently invite only!"));
             return 0;
         } else {
-            clanManager.addMember(newClanName, executor.getUuid());
+            clanManager.addMember(newClanName, executor.getUUID());
 
-            PlayerManager pm = context.getSource().getServer().getPlayerManager();
+            PlayerList pm = context.getSource().getServer().getPlayerList();
             for (UUID member : newClan.members()) {
-                ServerPlayerEntity player = pm.getPlayer(member);
+                ServerPlayer player = pm.getPlayer(member);
                 if (player != null) {
-                    player.sendMessage(Text.literal(executor.getName().getString() + " joined the clan!"));
+                    player.sendSystemMessage(Component.literal(executor.getName().getString() + " joined the clan!"));
                 }
             }
 
-            MutableText message = Text.literal("You've joined ")
-                    .formatted(Formatting.GREEN);
-            message.append(Text.literal(newClan.name())
-                    .setStyle(Style.EMPTY.withColor(TextColor.parse(newClan.hexColor()).getOrThrow())));
-            message.append(Text.literal("!").formatted(Formatting.GREEN));
-            context.getSource().sendMessage(message);
+            MutableComponent message = Component.literal("You've joined ")
+                    .withStyle(ChatFormatting.GREEN);
+            message.append(Component.literal(newClan.name())
+                    .setStyle(Style.EMPTY.withColor(TextColor.parseColor(newClan.hexColor()).getOrThrow())));
+            message.append(Component.literal("!").withStyle(ChatFormatting.GREEN));
+            context.getSource().sendSystemMessage(message);
             return 1;
         }
     }

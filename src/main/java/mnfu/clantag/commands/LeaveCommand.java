@@ -3,11 +3,11 @@ package mnfu.clantag.commands;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
-import net.minecraft.server.PlayerManager;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 
 import java.util.UUID;
 
@@ -18,20 +18,20 @@ public class LeaveCommand {
         this.clanManager = clanManager;
     }
 
-    public LiteralArgumentBuilder<ServerCommandSource> build() {
-        return CommandManager.literal("leave")
+    public LiteralArgumentBuilder<CommandSourceStack> build() {
+        return Commands.literal("leave")
                 .executes(context -> {
-                    ServerPlayerEntity executor = context.getSource().getPlayer();
+                    ServerPlayer executor = context.getSource().getPlayer();
                     if (executor == null) {
-                        context.getSource().sendError(Text.literal("Only players can leave clans!"));
+                        context.getSource().sendFailure(Component.literal("Only players can leave clans!"));
                         return 0;
                     }
 
-                    UUID executorUuid = executor.getUuid();
+                    UUID executorUuid = executor.getUUID();
                     Clan playerClan = clanManager.getPlayerClan(executorUuid);
 
                     if (playerClan == null) {
-                        context.getSource().sendError(Text.literal("You are not in a clan!"));
+                        context.getSource().sendFailure(Component.literal("You are not in a clan!"));
                         return 0;
                     }
 
@@ -40,7 +40,7 @@ public class LeaveCommand {
                         // if sole member, disband clan
                         if (playerClan.members().size() == 1) {
                             clanManager.deleteClan(playerClan.name());
-                            context.getSource().sendMessage(Text.literal(
+                            context.getSource().sendSystemMessage(Component.literal(
                                     "You have left " + playerClan.name() +
                                             "! Since you were the only member remaining, the clan was disbanded."
                             ));
@@ -48,7 +48,7 @@ public class LeaveCommand {
                         }
 
                         // must transfer ownership first
-                        context.getSource().sendError(Text.literal(
+                        context.getSource().sendFailure(Component.literal(
                                 "You must transfer ownership before leaving or disbanding the clan!"
                         ));
                         return 0;
@@ -56,15 +56,15 @@ public class LeaveCommand {
 
                     // normal member leaving
                     clanManager.removeMember(playerClan.name(), executorUuid);
-                    PlayerManager pm = context.getSource().getServer().getPlayerManager();
+                    PlayerList pm = context.getSource().getServer().getPlayerList();
                     for (UUID member : playerClan.members()) {
                         if (member.equals(executorUuid)) continue;
-                        ServerPlayerEntity player = pm.getPlayer(member);
+                        ServerPlayer player = pm.getPlayer(member);
                         if (player != null) {
-                            player.sendMessage(Text.literal(executor.getName().getString() + " left the clan!"));
+                            player.sendSystemMessage(Component.literal(executor.getName().getString() + " left the clan!"));
                         }
                     }
-                    context.getSource().sendMessage(Text.literal(
+                    context.getSource().sendSystemMessage(Component.literal(
                             "You have left " + playerClan.name() + "!"
                     ));
                     return 1;

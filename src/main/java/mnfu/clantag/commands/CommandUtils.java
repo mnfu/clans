@@ -5,11 +5,11 @@ import mnfu.clantag.Clan;
 import mnfu.clantag.MojangApi;
 import mnfu.clantag.PersistentPlayerCache;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.text.TextColor;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -23,7 +23,7 @@ public final class CommandUtils {
      *
      * @return an {@link Optional} containing the player's name if found, otherwise {@link Optional#empty()}
      */
-    public static CompletableFuture<Optional<String>> getPlayerName(CommandContext<ServerCommandSource> context, UUID uuid) {
+    public static CompletableFuture<Optional<String>> getPlayerName(CommandContext<CommandSourceStack> context, UUID uuid) {
         return getPlayerName(context.getSource().getServer(), uuid);
     }
 
@@ -32,7 +32,7 @@ public final class CommandUtils {
      *
      * @return an {@link Optional} containing the UUID if found, otherwise {@link Optional#empty()}
      */
-    public static CompletableFuture<Optional<UUID>> getUuid(CommandContext<ServerCommandSource> context, String playerName) {
+    public static CompletableFuture<Optional<UUID>> getUuid(CommandContext<CommandSourceStack> context, String playerName) {
         return getUuid(context.getSource().getServer(), playerName);
     }
 
@@ -42,7 +42,7 @@ public final class CommandUtils {
      * @return an {@link Optional} containing the player's name if found, otherwise {@link Optional#empty()}
      */
     public static CompletableFuture<Optional<String>> getPlayerName(MinecraftServer server, UUID uuid) {
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getName().getString()));
 
         return CompletableFuture.supplyAsync(() -> {
@@ -69,8 +69,8 @@ public final class CommandUtils {
      * @return an {@link Optional} containing the UUID if found, otherwise {@link Optional#empty()}
      */
     public static CompletableFuture<Optional<UUID>> getUuid(MinecraftServer server, String playerName) {
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(playerName);
-        if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getUuid()));
+        ServerPlayer player = server.getPlayerList().getPlayerByName(playerName);
+        if (player != null) return CompletableFuture.completedFuture(Optional.of(player.getUUID()));
 
         return CompletableFuture.supplyAsync(() -> {
             PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
@@ -87,9 +87,9 @@ public final class CommandUtils {
         });
     }
 
-    public static Text getColoredClanName(Clan clan) {
-        TextColor textColor = TextColor.parse(clan.hexColor()).getOrThrow();
-        return Text.literal(clan.name())
+    public static Component getColoredClanName(Clan clan) {
+        TextColor textColor = TextColor.parseColor(clan.hexColor()).getOrThrow();
+        return Component.literal(clan.name())
                 .setStyle(Style.EMPTY.withColor(textColor));
     }
 }

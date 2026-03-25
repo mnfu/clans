@@ -6,11 +6,12 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.commands.Commands;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import eu.pb4.placeholders.api.Placeholders;
@@ -40,42 +41,46 @@ public class ClanTag implements ModInitializer {
 
         // cache players when they join, reducing any offline player lookups
         ServerPlayConnectionEvents.JOIN.register(((serverPlayNetworkHandler, packetSender, minecraftServer) -> {
-            ServerPlayerEntity player = serverPlayNetworkHandler.getPlayer();
+            ServerPlayer player = serverPlayNetworkHandler.getPlayer();
             MojangApi.cachePlayer(player);
 
             PersistentPlayerCache cache = PersistentPlayerCache.getInstance();
             if (cache != null) {
-                boolean updated = cache.updateIfChanged(player.getUuid(), player.getName().getString());
+                boolean updated = cache.updateIfChanged(player.getUUID(), player.getName().getString());
                 if (updated) {
-                    LOGGER.debug("Updated persistent cache for {} ({})", player.getName().getString(), player.getUuid());
+                    LOGGER.debug("Updated persistent cache for {} ({})", player.getName().getString(), player.getUUID());
                 }
             }
         }));
 
         // register placeholders
-        Placeholders.register(
-                Identifier.of("clantag", "player_clan_name"),
+        Placeholders.registerServer(
+                Identifier.fromNamespaceAndPath("clantag", "player_clan_name"),
                 (ctx, arg) -> {
-                    if (!ctx.hasPlayer() || ctx.player() == null) return PlaceholderResult.invalid();
-                    Clan clan = clanManager.getPlayerClan(ctx.player().getUuid());
-                    if (clan == null) return PlaceholderResult.value(Text.literal("Avience"));
-                    return PlaceholderResult.value(Text.literal(clan.name()));
+                    if (!ctx.hasPlayer()) return PlaceholderResult.invalid();
+                    Player player = ctx.player();
+                    if (player == null) return PlaceholderResult.invalid();
+                    Clan clan = clanManager.getPlayerClan(player.getUUID());
+                    if (clan == null) return PlaceholderResult.value(Component.literal("Avience"));
+                    return PlaceholderResult.value(Component.literal(clan.name()));
                 }
         );
-        Placeholders.register(
-                Identifier.of("clantag", "player_clan_name_colored"),
+        Placeholders.registerServer(
+                Identifier.fromNamespaceAndPath("clantag", "player_clan_name_colored"),
                 (ctx, arg) -> {
-                    if (!ctx.hasPlayer() || ctx.player() == null) return PlaceholderResult.invalid();
-                    Clan clan = clanManager.getPlayerClan(ctx.player().getUuid());
-                    if (clan == null) return PlaceholderResult.value(Text.literal("Avience").formatted(Formatting.GRAY));
-                    return PlaceholderResult.value(Text.literal(clan.name()).withColor(Integer.parseInt(clan.hexColor().substring(1), 16)));
+                    if (!ctx.hasPlayer()) return PlaceholderResult.invalid();
+                    Player player = ctx.player();
+                    if (player == null) return PlaceholderResult.invalid();
+                    Clan clan = clanManager.getPlayerClan(player.getUUID());
+                    if (clan == null) return PlaceholderResult.value(Component.literal("Avience").withStyle(ChatFormatting.GRAY));
+                    return PlaceholderResult.value(Component.literal(clan.name()).withColor(Integer.parseInt(clan.hexColor().substring(1), 16)));
                 }
         );
 
         // register commands
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 
-            var baseCommand = CommandManager.literal("clan");
+            var baseCommand = Commands.literal("clan");
             HelpCommand helpCommandClass = new HelpCommand();
             var helpCommand = new HelpCommand().build();
             var adminCommand = new AdminCommand(clanManager).build();

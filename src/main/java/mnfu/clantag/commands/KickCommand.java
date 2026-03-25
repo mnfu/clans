@@ -4,11 +4,11 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
-import net.minecraft.server.PlayerManager;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -22,23 +22,23 @@ public class KickCommand {
         this.clanManager = clanManager;
     }
 
-    public LiteralArgumentBuilder<ServerCommandSource> build() {
-        return CommandManager.literal("kick")
-                .then(CommandManager.argument("playerName", StringArgumentType.word())
+    public LiteralArgumentBuilder<CommandSourceStack> build() {
+        return Commands.literal("kick")
+                .then(Commands.argument("playerName", StringArgumentType.word())
                         .suggests((context, builder) -> {
-                            ServerPlayerEntity executor = context.getSource().getPlayer();
+                            ServerPlayer executor = context.getSource().getPlayer();
                             if (executor == null) return builder.buildFuture();
 
-                            Clan clan = clanManager.getPlayerClan(executor.getUuid());
+                            Clan clan = clanManager.getPlayerClan(executor.getUUID());
                             if (clan == null) return builder.buildFuture();
 
-                            boolean executorIsLeader = clan.leader().equals(executor.getUuid());
-                            boolean executorIsOfficer = clan.officers().contains(executor.getUuid());
+                            boolean executorIsLeader = clan.leader().equals(executor.getUUID());
+                            boolean executorIsOfficer = clan.officers().contains(executor.getUUID());
 
                             CompletableFuture<?>[] nameFutures = clan.members().stream()
                                     .filter(targetUuid -> {
                                         // always allow self for self-kick
-                                        if (targetUuid.equals(executor.getUuid())) return true;
+                                        if (targetUuid.equals(executor.getUUID())) return true;
 
                                         // leader can kick anyone
                                         if (executorIsLeader) return true;
@@ -55,18 +55,18 @@ public class KickCommand {
                         })
                         .executes(context -> {
 
-                            ServerPlayerEntity executor = context.getSource().getPlayer();
+                            ServerPlayer executor = context.getSource().getPlayer();
                             if (executor == null) {
-                                context.getSource().sendError(Text.literal("Only players can kick members from clans!"));
+                                context.getSource().sendFailure(Component.literal("Only players can kick members from clans!"));
                                 return 0;
                             }
 
                             String targetName = StringArgumentType.getString(context, "playerName");
-                            UUID executorUuid = executor.getUuid();
+                            UUID executorUuid = executor.getUUID();
                             Clan playerClan = clanManager.getPlayerClan(executorUuid);
 
                             if (playerClan == null) {
-                                context.getSource().sendError(Text.literal("You are not in a clan!"));
+                                context.getSource().sendFailure(Component.literal("You are not in a clan!"));
                                 return 0;
                             }
 
@@ -74,7 +74,7 @@ public class KickCommand {
                             boolean executorIsClanOfficer = playerClan.officers().contains(executorUuid);
 
                             if (!executorIsClanLeader && !executorIsClanOfficer) {
-                                context.getSource().sendError(Text.literal("You are not the leader or an officer of a clan!"));
+                                context.getSource().sendFailure(Component.literal("You are not the leader or an officer of a clan!"));
                                 return 0;
                             }
 
@@ -82,14 +82,14 @@ public class KickCommand {
                             getUuid(context, targetName).thenAccept(optUuid ->
                                     context.getSource().getServer().execute(() -> { // back on main thread
                                         if (optUuid.isEmpty()) {
-                                            context.getSource().sendError(Text.literal("Player not found!"));
+                                            context.getSource().sendFailure(Component.literal("Player not found!"));
                                             return;
                                         }
 
                                         UUID targetUuid = optUuid.get();
 
                                         if (!playerClan.members().contains(targetUuid)) {
-                                            context.getSource().sendError(Text.literal(targetName + " is not in clan " + playerClan.name() + "!"));
+                                            context.getSource().sendFailure(Component.literal(targetName + " is not in clan " + playerClan.name() + "!"));
                                             return;
                                         }
 
@@ -97,29 +97,29 @@ public class KickCommand {
                                         if (targetUuid.equals(executorUuid)) {
                                             if (playerClan.members().size() == 1) {
                                                 clanManager.deleteClan(playerClan.name());
-                                                context.getSource().sendMessage(Text.literal(
+                                                context.getSource().sendSystemMessage(Component.literal(
                                                         "You have kicked yourself from " + playerClan.name() +
                                                                 "! Since you were the only member, the clan was disbanded."
                                                 ));
                                                 return;
                                             }
                                             if (executorIsClanLeader) {
-                                                context.getSource().sendError(Text.literal(
+                                                context.getSource().sendFailure(Component.literal(
                                                         "You must transfer ownership before leaving or disbanding the clan!"
                                                 ));
                                                 return;
                                             }
                                             clanManager.removeMember(playerClan.name(), targetUuid);
-                                            PlayerManager pm = context.getSource().getServer().getPlayerManager();
+                                            PlayerList pm = context.getSource().getServer().getPlayerList();
                                             String executorName = executor.getName().getString();
                                             for (UUID member : playerClan.members()) {
                                                 if (member.equals(targetUuid)) continue;
-                                                ServerPlayerEntity player = pm.getPlayer(member);
+                                                ServerPlayer player = pm.getPlayer(member);
                                                 if (player != null) {
-                                                    player.sendMessage(Text.literal(executorName + " was kicked from the clan by " + executorName));
+                                                    player.sendSystemMessage(Component.literal(executorName + " was kicked from the clan by " + executorName));
                                                 }
                                             }
-                                            context.getSource().sendMessage(Text.literal("You have kicked yourself from " + playerClan.name() + "!"));
+                                            context.getSource().sendSystemMessage(Component.literal("You have kicked yourself from " + playerClan.name() + "!"));
                                             return;
                                         }
 
@@ -128,7 +128,7 @@ public class KickCommand {
 
                                         // officer trying to kick leader or officer
                                         if (executorIsClanOfficer && (targetIsLeader || targetIsOfficer)) {
-                                            context.getSource().sendError(Text.literal(
+                                            context.getSource().sendFailure(Component.literal(
                                                     "Officers cannot kick other officers or the leader!"
                                             ));
                                             return;
@@ -138,16 +138,16 @@ public class KickCommand {
 
                                         // remove the member
                                         clanManager.removeMember(playerClan.name(), targetUuid);
-                                        PlayerManager pm = context.getSource().getServer().getPlayerManager();
+                                        PlayerList pm = context.getSource().getServer().getPlayerList();
                                         String executorName = executor.getName().getString();
                                         for (UUID member : playerClan.members()) {
                                             if (member.equals(executorUuid) || member.equals(targetUuid)) continue;
-                                            ServerPlayerEntity player = pm.getPlayer(member);
+                                            ServerPlayer player = pm.getPlayer(member);
                                             if (player != null) {
-                                                player.sendMessage(Text.literal(targetName + " was kicked from the clan by " + executorName));
+                                                player.sendSystemMessage(Component.literal(targetName + " was kicked from the clan by " + executorName));
                                             }
                                         }
-                                        context.getSource().sendMessage(Text.literal(
+                                        context.getSource().sendSystemMessage(Component.literal(
                                                 "Kicked " + targetName + " from " + playerClan.name() + "!"
                                         ));
                                     })
