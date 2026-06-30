@@ -3,24 +3,22 @@ package mnfu.clantag.commands;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.serialization.DataResult;
 import mnfu.clantag.Clan;
 import mnfu.clantag.ClanManager;
 import mnfu.clantag.ClanManager.JoinPolicy;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.*;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TextColor;
-import net.minecraft.ChatFormatting;
+import net.minecraft.server.level.ServerPlayer;
 
+import java.awt.*;
 import java.util.Collection;
-import java.util.Locale;
 
 public class SetCommand {
     private final ClanManager clanManager;
-    private final Collection<String> colorNames = ChatFormatting.getNames(true, false);
+    private final Collection<String> colorNames = MinecraftColor.getKeys();
 
     public SetCommand(ClanManager clanManager) {
         this.clanManager = clanManager;
@@ -35,6 +33,7 @@ public class SetCommand {
                                     for (String c : colorNames) {
                                         builder.suggest(c);
                                     }
+                                    builder.suggest("reset");
                                     return builder.buildFuture();
                                 })
                                 .executes(this::executeColor)
@@ -76,17 +75,20 @@ public class SetCommand {
 
         String newColor = StringArgumentType.getString(context, "newColorNameOrHex");
         if (newColor == null || newColor.isEmpty()) return 0;
+        newColor = newColor.trim();
 
-        ChatFormatting formatting = ChatFormatting.getByName(newColor);
-        if (formatting != null && formatting.isColor()) {
-            newColor = "#" + Integer.toHexString(formatting.getColor()).toUpperCase(Locale.ROOT);
-        } else if (newColor.matches("(?i)^#?[0-9a-f]{1,6}$")) {
-            newColor = "#" + newColor.replaceFirst("^#", "").toUpperCase(Locale.ROOT);
-        } else if ("reset".equalsIgnoreCase(newColor)) {
-            newColor = "#" + Integer.toHexString(ChatFormatting.WHITE.getColor()).toUpperCase(Locale.ROOT);
+        if (newColor.equalsIgnoreCase("reset")) {
+            newColor = String.format("#%06X", TextColor.WHITE.getValue());
+        } else if (newColor.matches("^[0-9a-fA-F]{1,6}$")) {
+            newColor = String.format("#%06X", Integer.parseInt(newColor, 16));
         } else {
-            context.getSource().sendFailure(Component.literal(newColor + " is not a valid hex color or minecraft color."));
-            return 0;
+            DataResult<TextColor> result = TextColor.parseColor(newColor);
+            if (result.isError()) {
+                context.getSource().sendFailure(Component.literal(newColor + " is not a valid hex color or minecraft color."));
+                return 0;
+            }
+            TextColor color = result.result().orElseThrow();
+            newColor = String.format("#%06X", color.getValue());
         }
 
         String oldColor = clan.hexColor();
@@ -100,11 +102,11 @@ public class SetCommand {
         TextColor oldClanTextColor = TextColor.parseColor(oldColor).getOrThrow();
         TextColor newClanTextColor = TextColor.parseColor(newColor).getOrThrow();
 
-        message.append(Component.literal("Updated clan color from ").withStyle(ChatFormatting.GRAY))
+        message.append(Component.literal("Updated clan color from ").withColor(TextColor.GRAY))
                 .append(Component.literal(colorDisplayName(oldColor)).setStyle(Style.EMPTY.withColor(oldClanTextColor)))
-                .append(Component.literal(" to ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(" to ").withColor(TextColor.GRAY))
                 .append(Component.literal(colorDisplayName(newColor)).setStyle(Style.EMPTY.withColor(newClanTextColor)))
-                .append(Component.literal("!").withStyle(ChatFormatting.GRAY));
+                .append(Component.literal("!").withColor((TextColor.GRAY)));
 
         context.getSource().sendSystemMessage(message);
         return 1;
@@ -126,11 +128,11 @@ public class SetCommand {
         clanManager.changePolicy(clan.name(), newPolicy);
 
         MutableComponent message = Component.empty()
-                .append(Component.literal("Updated clan access from ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("Updated clan access from ").withColor(TextColor.GRAY))
                 .append(accessText(oldPolicy != JoinPolicy.OPEN))
-                .append(Component.literal(" to ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(" to ").withColor(TextColor.GRAY))
                 .append(accessText(newPolicy != JoinPolicy.OPEN))
-                .append(Component.literal("!").withStyle(ChatFormatting.GRAY));
+                .append(Component.literal("!").withColor(TextColor.GRAY));
 
         context.getSource().sendSystemMessage(message);
         return 1;
@@ -149,7 +151,7 @@ public class SetCommand {
 
     private MutableComponent accessText(boolean closed) {
         return Component.literal(closed ? "Invite Only" : "Open")
-                .withStyle(closed ? ChatFormatting.RED : ChatFormatting.GREEN);
+                .withColor(closed ? TextColor.RED : TextColor.GREEN);
     }
 
     private int executeName(CommandContext<CommandSourceStack> context) {
@@ -176,11 +178,11 @@ public class SetCommand {
         }
 
         TextColor clanTextColor = TextColor.parseColor(clan.hexColor()).getOrThrow();
-        MutableComponent message = Component.literal("Updated clan name from ").withStyle(ChatFormatting.GRAY)
+        MutableComponent message = Component.literal("Updated clan name from ").withColor(TextColor.GRAY)
                 .append(Component.literal(clan.name()).setStyle(Style.EMPTY.withColor(clanTextColor)))
-                .append(Component.literal(" to ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(" to ").withColor(TextColor.GRAY))
                 .append(Component.literal(newClanName).setStyle(Style.EMPTY.withColor(clanTextColor)))
-                .append(Component.literal("!").withStyle(ChatFormatting.GRAY));
+                .append(Component.literal("!").withColor(TextColor.GRAY));
 
         context.getSource().sendSystemMessage(message);
         return 1;
