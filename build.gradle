@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.15-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom' version '1.18-SNAPSHOT'
     id 'maven-publish'
 }
 
@@ -34,8 +34,8 @@ repositories {
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
     maven {
-        url "https://maven.nucleoid.xyz/"
-        name "Nucleoid"
+        url = "https://maven.nucleoid.xyz/"
+        name = "Nucleoid"
     }
     mavenCentral()
 }
@@ -56,7 +56,7 @@ processResources {
     inputs.property "version", project.version
     inputs.property "minecraft_version", project.minecraft_version
     inputs.property "loader_version", project.loader_version
-    filteringCharset "UTF-8"
+    filteringCharset = "UTF-8"
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
