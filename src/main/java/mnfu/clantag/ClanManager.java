@@ -246,6 +246,14 @@ public class ClanManager {
         return clans.keySet();
     }
 
+    /**
+     * @return the canonical name of a clan object passed in
+     * (using the same canonicalization method that ClanManager uses)
+     */
+    public String getCanonicalName(Clan clan) {
+        return canonicalize(clan.name());
+    }
+
     public boolean load() {
         if (!file.exists()) return false;
 

@@ -27,21 +27,22 @@ Currently the default value is not configurable, as this was made for a specific
 
 ---
 
-## Commands - `Updated as of 1.1.0-dev`
+## Commands - `Updated as of 1.2.0`
 
 ### Regular Commands
 
-| Command                                            | Description                                                                               |
-|----------------------------------------------------|-------------------------------------------------------------------------------------------|
-| `/clan`                                            | Base command.                                                                             |
-| `/clan help [pageName]`                            | Shows a help menu page (defaults to this page if pageName isn't chosen).                  |
+| Command                                            | Description                                                                                 |
+|----------------------------------------------------|---------------------------------------------------------------------------------------------|
+| `/clan`                                            | Base command.                                                                               |
+| `/clan help [pageName]`                            | Shows a help menu page (defaults to this page if pageName isn't chosen).                    |
 | `/clan create <clanName>`                          | Creates a clan if it doesn't already exist, the name is allowed, and you are not in a clan. |
 | `/clan info [name\|player] <clanName\|playerName>` | Shows info about a certain clan. If blank, attempts to use your clan.                       |
-| `/clan invites`                                    | Views your current clan invites in a neat list to accept/decline.                         |
-| `/clan accept <clanName>`                          | Alternative to clicking in chat to accept an invite.                                      |
-| `/clan decline <clanName>`                         | Alternative to clicking in chat to decline an invite.                                     |
-| `/clan join <clanName>`                            | Joins a clan if it is open to joins.                                                      |
-| `/clan leave`                                      | Leaves your current clan. If you are the leader with no other members, disbands the clan. |
+| `/clan top <page>`                                 | Shows the top clans by playercount. The page argument selects which page is displayed.      |
+| `/clan invites`                                    | Views your current clan invites in a neat list to accept/decline.                           |
+| `/clan accept <clanName>`                          | Alternative to clicking in chat to accept an invite.                                        |
+| `/clan decline <clanName>`                         | Alternative to clicking in chat to decline an invite.                                       |
+| `/clan join <clanName>`                            | Joins a clan if it is open to joins.                                                        |
+| `/clan leave`                                      | Leaves your current clan. If you are the leader with no other members, disbands the clan.   |
 
 ### Clan Officer Commands - Restricted to Officers and Above
 

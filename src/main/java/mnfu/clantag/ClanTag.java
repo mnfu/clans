@@ -85,6 +85,7 @@ public class ClanTag implements ModInitializer {
             var helpCommand = new HelpCommand().build();
             var adminCommand = new AdminCommand(clanManager).build();
             var infoCommand = new InfoCommand(clanManager).build();
+            var topCommand = new TopCommand(clanManager).build();
 
             InviteCommand inviteCommand = new InviteCommand(clanManager, inviteManager);
             var inviteSubcommand = inviteCommand.buildInvite();
@@ -107,6 +108,7 @@ public class ClanTag implements ModInitializer {
                     .then(adminCommand)
                     .then(setCommand)
                     .then(infoCommand)
+                    .then(topCommand)
                     .then(inviteSubcommand)
                     .then(acceptCommand)
                     .then(declineCommand)
