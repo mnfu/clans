@@ -15,7 +15,8 @@ import java.util.*;
 public class TopCommand {
     private final ClanManager clanManager;
 
-    private static final int PAGE_SIZE = 10;
+    // before opening chat minecraft displays 10 lines, im reserving 1 for header, 1 for footer, so 8 content lines.
+    private static final int PAGE_SIZE = 8;
     private static final long CACHE_TTL = 1000 * 60; // 1 minute
 
     private List<Clan> cachedRanking = List.of();
